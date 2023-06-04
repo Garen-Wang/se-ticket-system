@@ -1,7 +1,23 @@
-use crate::{auth::token, error::AppError, schema::account_info};
+use crate::{
+    auth::token,
+    error::AppError,
+    schema::{account_info, employee_info},
+};
 use chrono::Utc;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize, Selectable, Identifiable, Queryable)]
+#[diesel(table_name = employee_info)]
+pub struct Employee {
+    pub id: i32,
+    pub name: String,
+    pub age: i32,
+    pub position: Option<String>,
+    pub phone: String,
+    pub state: i16,
+    pub approval_level: Option<i32>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, Selectable)]
 #[diesel(table_name = account_info)]
@@ -55,12 +71,12 @@ impl User {
             account_type,
         };
 
-        let account: User = diesel::insert_into(account_info::table)
+        let user: User = diesel::insert_into(account_info::table)
             .values(insert_account)
             .get_result(conn)?;
 
-        let token = account.generate_token()?;
-        Ok((account, token))
+        let token = user.generate_token()?;
+        Ok((user, token))
     }
 
     pub fn login(
@@ -87,10 +103,7 @@ impl User {
         changeset: UpdateUser,
     ) -> Result<User, AppError> {
         let target = account_info::table.filter(account_info::id.eq(id));
-        let account = diesel::update(target)
-            .set(changeset)
-            .returning(User::as_returning())
-            .get_result(conn)?;
+        let account = diesel::update(target).set(changeset).get_result(conn)?;
         Ok(account)
     }
 
@@ -106,16 +119,17 @@ impl User {
         Ok(user)
     }
 
-    pub fn find_by_name(conn: &mut PgConnection, account_name: &str) -> Result<User, AppError> {
-        let account: User = account_info::table
-            .filter(account_info::account_name.eq(account_name))
+    pub fn find_by_name(conn: &mut PgConnection, username: &str) -> Result<User, AppError> {
+        use crate::schema::account_info::dsl::*;
+        let user: User = account_info
+            .filter(account_name.eq(username))
             .limit(1)
             .first(conn)?;
-        Ok(account)
+        Ok(user)
     }
 
     pub fn get_all(conn: &mut PgConnection) -> Result<Vec<User>, AppError> {
-        let users = account_info::table.get_results::<User>(conn)?;
+        let users = account_info::table.get_results(conn)?;
         Ok(users)
     }
 }

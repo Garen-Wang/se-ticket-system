@@ -13,8 +13,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    apply_dev_info (id) {
-        id -> Int4,
+    apply_dev_info (ticket_id, operation_id) {
         ticket_id -> Int4,
         operation_id -> Int4,
     }
@@ -32,19 +31,17 @@ diesel::table! {
 }
 
 diesel::table! {
-    approved_info (id) {
-        id -> Int4,
+    approved_info (ticket_id, approval_id) {
         ticket_id -> Int4,
         approval_id -> Int4,
     }
 }
 
 diesel::table! {
-    assist_info (id) {
-        id -> Int4,
+    assist_info (ticket_id, employee_id) {
         ticket_id -> Int4,
         state -> Int2,
-        receiver_id -> Int4,
+        employee_id -> Int4,
     }
 }
 
@@ -64,8 +61,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    employee_operation_info (id) {
-        id -> Int4,
+    employee_operation_info (e_id, o_id) {
         e_id -> Int4,
         o_id -> Int4,
     }
@@ -116,7 +112,7 @@ diesel::joinable!(apply_dev_info -> operation_info (operation_id));
 diesel::joinable!(apply_dev_info -> ticket_info (ticket_id));
 diesel::joinable!(approved_info -> approval_info (approval_id));
 diesel::joinable!(approved_info -> ticket_info (ticket_id));
-diesel::joinable!(assist_info -> employee_info (receiver_id));
+diesel::joinable!(assist_info -> employee_info (employee_id));
 diesel::joinable!(assist_info -> ticket_info (ticket_id));
 diesel::joinable!(employee_info -> approval_info (approval_level));
 diesel::joinable!(employee_operation_info -> employee_info (e_id));
