@@ -3,7 +3,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use crate::{auth::auth::get_current_user, error::AppError, AppState};
 
 use super::{
-    model::{UpdateUser, User, InsertUser},
+    model::{UpdateUser, User},
     request::{LoginRequest, RegisterRequest, UpdateRequest},
     response::UserResponse,
 };

@@ -16,7 +16,7 @@ pub struct Employee {
     pub position: Option<String>,
     pub phone: String,
     pub state: i16,
-    pub approval_level: Option<i32>,
+    pub approval_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, Selectable)]

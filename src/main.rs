@@ -12,7 +12,6 @@ pub mod error;
 pub mod router;
 pub mod schema;
 
-pub mod ticket;
 pub mod user;
 
 pub type Manager = ConnectionManager<PgConnection>;

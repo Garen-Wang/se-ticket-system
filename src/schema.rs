@@ -21,7 +21,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    approval_info (approval_level) {
+    approval_info (id) {
         approval_level -> Int4,
         #[max_length = 100]
         approval_name -> Varchar,
@@ -29,6 +29,7 @@ diesel::table! {
         #[max_length = 50]
         company -> Nullable<Varchar>,
         system_id -> Int4,
+        id -> Int4,
     }
 }
 
@@ -58,7 +59,7 @@ diesel::table! {
         #[max_length = 50]
         phone -> Bpchar,
         state -> Int2,
-        approval_level -> Nullable<Int4>,
+        approval_id -> Nullable<Int4>,
     }
 }
 
@@ -100,7 +101,7 @@ diesel::table! {
     ticket_info (id) {
         id -> Int4,
         creator_id -> Int4,
-        approval_level -> Nullable<Int4>,
+        approval_id -> Nullable<Int4>,
         last_approver_id -> Nullable<Int4>,
         #[max_length = 100]
         title -> Varchar,
@@ -128,13 +129,12 @@ diesel::joinable!(approved_info -> approval_info (approval_id));
 diesel::joinable!(approved_info -> ticket_info (ticket_id));
 diesel::joinable!(assist_info -> employee_info (employee_id));
 diesel::joinable!(assist_info -> ticket_info (ticket_id));
-diesel::joinable!(employee_info -> approval_info (approval_level));
+diesel::joinable!(employee_info -> approval_info (approval_id));
 diesel::joinable!(employee_operation_info -> employee_info (e_id));
 diesel::joinable!(employee_operation_info -> operation_info (o_id));
 diesel::joinable!(fund_list -> ticket_info (ticket_id));
 diesel::joinable!(operation_info -> system_info (system_id));
-diesel::joinable!(ticket_info -> approval_info (last_approver_id));
-diesel::joinable!(ticket_info -> employee_info (creator_id));
+diesel::joinable!(ticket_info -> approval_info (approval_id));
 diesel::joinable!(ticket_info -> system_info (system_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
