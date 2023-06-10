@@ -9,6 +9,7 @@ pub struct LoginRequest {
 pub struct LoginUser {
     pub username: String,
     pub password: String,
+    pub system_id: i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -22,6 +23,7 @@ pub struct RegisterUser {
     pub password: String,
     pub employee_id: i32,
     pub account_type: i16,
+    pub system_id: i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]

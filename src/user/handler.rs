@@ -3,7 +3,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use crate::{auth::auth::get_current_user, error::AppError, AppState};
 
 use super::{
-    model::{UpdateUser, User},
+    model::{UpdateUser, User, InsertUser},
     request::{LoginRequest, RegisterRequest, UpdateRequest},
     response::UserResponse,
 };
@@ -25,10 +25,11 @@ pub async fn register(
     let mut conn = app_state.conn()?;
     let (user, token) = User::register(
         &mut conn,
-        &form.user.username,
-        &form.user.password,
         form.user.employee_id,
+        &form.user.username,
+        &form.user.username,
         form.user.account_type,
+        form.user.system_id,
     )?;
     let resp = UserResponse::from((user, token));
     Ok(HttpResponse::Ok().json(resp))

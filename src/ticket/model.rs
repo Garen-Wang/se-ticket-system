@@ -24,6 +24,7 @@ pub struct Ticket {
     pub created_time: NaiveDateTime,
     pub updated_time: NaiveDateTime,
     pub expired_type: i16,
+    pub system_id: i32,
 }
 
 #[derive(Insertable)]

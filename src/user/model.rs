@@ -27,6 +27,7 @@ pub struct User {
     pub account_name: String,
     pub password_hash: String,
     pub account_type: i16,
+    pub system_id: i32,
 }
 
 #[derive(Insertable)]
@@ -36,6 +37,7 @@ pub struct InsertUser<'a> {
     pub account_name: &'a str,
     pub password_hash: &'a str,
     pub account_type: i16,
+    pub system_id: i32,
 }
 
 #[derive(AsChangeset)]
@@ -57,22 +59,33 @@ impl User {
 impl User {
     pub fn register(
         conn: &mut PgConnection,
+        employee_id: i32,
         account_name: &str,
         naive_password: &str,
-        employee_id: i32,
         account_type: i16,
+        system_id: i32,
     ) -> Result<(User, String), AppError> {
+        // 审批职位 Option
+        // 所属部门 Option
+        // 职位 required
+        // gender
+        // real name
+        // account
+        // password
+        // type: (管理员)，审批人，运维，报表查看者，申请人, 0, 1, 2, 3, 4
+        // 能审批不一定能查看报表，能查看爆表一定能审批
         let encrypted_password = bcrypt::hash(naive_password, bcrypt::DEFAULT_COST)?;
 
-        let insert_account = InsertUser {
+        let insert_user= InsertUser {
             employee_id,
             account_name,
             password_hash: &encrypted_password,
             account_type,
+            system_id,
         };
 
         let user: User = diesel::insert_into(account_info::table)
-            .values(insert_account)
+            .values(insert_user)
             .get_result(conn)?;
 
         let token = user.generate_token()?;
