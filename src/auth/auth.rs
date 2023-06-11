@@ -10,7 +10,11 @@ use lazy_static::lazy_static;
 use serde_json::json;
 use std::future::{ready, Ready};
 
-use crate::{error::AppError, user::model::User, AppState};
+use crate::{
+    error::{AppError, ErrMessage},
+    user::model::User,
+    AppState,
+};
 
 use super::token;
 
@@ -132,9 +136,9 @@ fn set_auth_user(req: &mut ServiceRequest) -> bool {
 // get from request local data
 pub fn get_current_user(req: &HttpRequest) -> Result<User, AppError> {
     let user = req.extensions().get::<User>().map(|user| user.to_owned());
-    user.ok_or(AppError::Unauthorized(json!({
-        "error": "unauthorized user. need a auth token in header"
-    })))
+    user.ok_or(AppError::Unauthorized(ErrMessage {
+        error: "unauthorized user. need a auth token in header".into(),
+    }))
 }
 
 // introducing authentication middleware

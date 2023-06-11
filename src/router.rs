@@ -11,7 +11,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 
     cfg.service(
         web::scope("/auth")
-        .route("login", web::post().to(user::handler::login))
-        .route("register", web::post().to(user::handler::register))
+            .route("login", web::post().to(user::handler::login))
+            .route("register", web::post().to(user::handler::register)),
     );
 }

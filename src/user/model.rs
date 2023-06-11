@@ -76,7 +76,7 @@ impl User {
         // 能审批不一定能查看报表，能查看爆表一定能审批
         let encrypted_password = bcrypt::hash(naive_password, bcrypt::DEFAULT_COST)?;
 
-        let insert_user= InsertUser {
+        let insert_user = InsertUser {
             employee_id,
             account_name,
             password_hash: &encrypted_password,

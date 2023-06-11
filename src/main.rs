@@ -8,6 +8,7 @@ use diesel::{
 use error::AppError;
 
 pub mod auth;
+pub mod common;
 pub mod error;
 pub mod router;
 pub mod schema;
