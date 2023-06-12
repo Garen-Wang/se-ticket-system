@@ -4,7 +4,7 @@ use actix_web::{error::BlockingError, http::StatusCode, HttpResponse};
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::common::response::CommonResponse;
+use crate::utils::response::CommonResponse;
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -69,7 +69,8 @@ impl actix_web::error::ResponseError for AppError {
 }
 
 impl From<bcrypt::BcryptError> for AppError {
-    fn from(_e: bcrypt::BcryptError) -> Self {
+    fn from(e: bcrypt::BcryptError) -> Self {
+        log::error!("bcrypt::BcryptError: {}", e);
         AppError::InternalServerError
     }
 }
@@ -80,7 +81,10 @@ impl From<diesel::result::Error> for AppError {
             diesel::result::Error::NotFound => AppError::Ok(ErrMessage {
                 error: "requested record not found".into(),
             }),
-            _ => AppError::InternalServerError,
+            e => {
+                log::error!("diesel::result::Error: {}", e);
+                AppError::InternalServerError
+            }
         }
     }
 }
@@ -102,19 +106,22 @@ impl From<jsonwebtoken::errors::Error> for AppError {
 }
 
 impl From<r2d2::Error> for AppError {
-    fn from(_: r2d2::Error) -> Self {
+    fn from(e: r2d2::Error) -> Self {
+        log::error!("r2d2::Error: {}", e);
         AppError::InternalServerError
     }
 }
 
 impl From<BlockingError> for AppError {
-    fn from(_: BlockingError) -> Self {
+    fn from(e: BlockingError) -> Self {
+        log::error!("BlockingError: {}", e);
         AppError::InternalServerError
     }
 }
 
 impl From<std::io::Error> for AppError {
-    fn from(_: std::io::Error) -> Self {
+    fn from(e: std::io::Error) -> Self {
+        log::error!("std::io::Error: {}", e);
         AppError::InternalServerError
     }
 }

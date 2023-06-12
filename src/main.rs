@@ -1,19 +1,19 @@
 use actix_cors::Cors;
 use actix_web::{http, middleware::Logger, web, App, HttpServer};
-use auth::auth::Authorization;
 use diesel::{
     r2d2::{self, ConnectionManager, PooledConnection},
     PgConnection,
 };
 use error::AppError;
+use utils::auth::Authorization;
 
-pub mod auth;
-pub mod common;
 pub mod error;
 pub mod router;
 pub mod schema;
 
-pub mod user;
+pub mod api;
+pub mod models;
+pub mod utils;
 
 pub type Manager = ConnectionManager<PgConnection>;
 pub type Pool = r2d2::Pool<Manager>;

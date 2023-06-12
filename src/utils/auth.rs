@@ -7,12 +7,13 @@ use actix_web::{
 use diesel::PgConnection;
 use futures::future::LocalBoxFuture;
 use lazy_static::lazy_static;
-use serde_json::json;
 use std::future::{ready, Ready};
 
 use crate::{
     error::{AppError, ErrMessage},
-    user::model::User,
+    models::account::Account,
+    models::employee::Employee,
+    models::system::System,
     AppState,
 };
 
@@ -101,13 +102,13 @@ fn get_user_id_from_header(req: &ServiceRequest) -> Result<i32, &str> {
         .map(|token| token.claims.user_id)
 }
 
-fn find_auth_user(conn: &mut PgConnection, user_id: i32) -> Result<User, AppError> {
-    let user = User::find(conn, user_id)?;
+fn find_auth_user(conn: &mut PgConnection, account_id: i32) -> Result<Account, AppError> {
+    let user = Account::find(conn, account_id)?;
     Ok(user)
 }
 
 // used when request provided
-fn fetch_user(req: &ServiceRequest) -> Result<User, &str> {
+fn fetch_user(req: &ServiceRequest) -> Result<Account, &str> {
     let user_id = get_user_id_from_header(req)?;
 
     let mut conn = req
@@ -134,11 +135,51 @@ fn set_auth_user(req: &mut ServiceRequest) -> bool {
 }
 
 // get from request local data
-pub fn get_current_user(req: &HttpRequest) -> Result<User, AppError> {
-    let user = req.extensions().get::<User>().map(|user| user.to_owned());
+pub fn get_current_user(req: &HttpRequest) -> Result<Account, AppError> {
+    let user = req
+        .extensions()
+        .get::<Account>()
+        .map(|user| user.to_owned());
     user.ok_or(AppError::Unauthorized(ErrMessage {
         error: "unauthorized user. need a auth token in header".into(),
     }))
+}
+
+pub fn get_current_employee(
+    req: &HttpRequest,
+    conn: &mut PgConnection,
+) -> Result<Employee, AppError> {
+    let user = get_current_user(req)?;
+    let employee = Employee::get_by_id(conn, user.employee_id)?;
+    Ok(employee)
+}
+
+pub fn get_current_system(req: &HttpRequest, conn: &mut PgConnection) -> Result<System, AppError> {
+    let employee = get_current_employee(req, conn)?;
+    let system = System::get_by_id(conn, employee.system_id)?;
+    Ok(system)
+}
+
+pub fn is_super_admin(req: &HttpRequest, conn: &mut PgConnection) -> Result<bool, AppError> {
+    let user = get_current_user(req)?;
+    let employee = Employee::get_by_id(conn, user.employee_id)?;
+    if employee.id != 1 || employee.name != "超级管理员" {
+        return Ok(false);
+    }
+    let system = System::get_by_id(conn, employee.system_id)?;
+    if system.id != 1 || system.name != "超级系统" {
+        return Ok(false);
+    }
+    Ok(true)
+}
+
+pub fn is_system_admin(req: &HttpRequest, conn: &mut PgConnection) -> Result<bool, AppError> {
+    let user = get_current_user(req)?;
+    let system = get_current_system(req, conn)?;
+    match system.admin_account_id {
+        None => Ok(false),
+        Some(id) => Ok(id == user.id),
+    }
 }
 
 // introducing authentication middleware

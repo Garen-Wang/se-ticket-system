@@ -1,9 +1,9 @@
 use actix_web::{web, HttpResponse};
 
-use crate::user;
+use crate::api::handlers::*;
 
 async fn healthcheck() -> HttpResponse {
-    HttpResponse::Ok().body("ok")
+    HttpResponse::Ok().finish()
 }
 
 pub fn routes(cfg: &mut web::ServiceConfig) {
@@ -11,7 +11,9 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 
     cfg.service(
         web::scope("/auth")
-            .route("login", web::post().to(user::handler::login))
-            .route("register", web::post().to(user::handler::register)),
+            .route("login", web::post().to(auth::login))
+            .route("register", web::post().to(auth::register)),
     );
+
+    cfg.service(web::scope("/ticket").route("page", web::get().to(ticket::get_tickets_by_page)));
 }
