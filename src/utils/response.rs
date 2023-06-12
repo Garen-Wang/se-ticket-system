@@ -16,3 +16,14 @@ impl<T: std::fmt::Debug + Clone + Serialize> From<T> for CommonResponse<T> {
         }
     }
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MessageResponse {
+    pub message: String,
+}
+
+pub fn new_ok_response(message: &str) -> CommonResponse<MessageResponse> {
+    CommonResponse::from(MessageResponse {
+        message: message.to_string(),
+    })
+}

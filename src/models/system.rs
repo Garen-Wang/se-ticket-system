@@ -28,4 +28,15 @@ impl System {
         let system: System = system_info::table.find(id).first(conn)?;
         Ok(system)
     }
+
+    pub fn set_admin_account_id(
+        conn: &mut PgConnection,
+        id: i32,
+        account_id: i32,
+    ) -> Result<System, AppError> {
+        let system: System = diesel::update(system_info::table.filter(system_info::id.eq(id)))
+            .set(system_info::admin_account_id.eq(account_id))
+            .get_result(conn)?;
+        Ok(system)
+    }
 }

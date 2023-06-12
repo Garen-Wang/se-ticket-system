@@ -18,5 +18,23 @@ pub struct CreateTicketRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct TicketFundRequest {
     pub reason: String,
-    pub amount: String,
+    pub amount: i32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CreateAssistTicketRequest {
+    pub ticket_id: i32,
+    pub department_name: String,
+    pub amount: i32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TakeTicketRequest {
+    pub ticket_id: i32,
+    pub department_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FinishTicketRequest {
+    pub ticket_id: i32,
 }

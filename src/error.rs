@@ -38,6 +38,12 @@ impl Display for ErrMessage {
     }
 }
 
+pub fn new_ok_error(error: &str) -> AppError {
+    AppError::Ok(ErrMessage {
+        error: error.into(),
+    })
+}
+
 impl actix_web::error::ResponseError for AppError {
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
         match self {
@@ -78,9 +84,7 @@ impl From<bcrypt::BcryptError> for AppError {
 impl From<diesel::result::Error> for AppError {
     fn from(e: diesel::result::Error) -> Self {
         match e {
-            diesel::result::Error::NotFound => AppError::Ok(ErrMessage {
-                error: "requested record not found".into(),
-            }),
+            diesel::result::Error::NotFound => new_ok_error("requested record not found"),
             e => {
                 log::error!("diesel::result::Error: {}", e);
                 AppError::InternalServerError

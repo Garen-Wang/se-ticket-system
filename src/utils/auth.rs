@@ -19,6 +19,20 @@ use crate::{
 
 use super::token;
 
+// 需要跳过路由的在这里写
+lazy_static! {
+    static ref SKIP_AUTH_ROUTES: Vec<SkipAuthRoute> = vec![
+        SkipAuthRoute {
+            path: "/healthcheck",
+            method: Method::GET,
+        },
+        SkipAuthRoute {
+            path: "/auth/login",
+            method: Method::POST,
+        },
+    ];
+}
+
 struct SkipAuthRoute {
     path: &'static str,
     method: Method,
@@ -55,23 +69,6 @@ impl SkipAuthRoute {
     fn matches_method(&self, method: &Method) -> bool {
         self.method == method
     }
-}
-
-lazy_static! {
-    static ref SKIP_AUTH_ROUTES: Vec<SkipAuthRoute> = vec![
-        SkipAuthRoute {
-            path: "/healthcheck",
-            method: Method::GET,
-        },
-        SkipAuthRoute {
-            path: "/auth/login",
-            method: Method::POST,
-        },
-        SkipAuthRoute {
-            path: "/auth/register",
-            method: Method::POST,
-        },
-    ];
 }
 
 fn should_skip_auth(req: &ServiceRequest) -> bool {
