@@ -31,7 +31,7 @@ use crate::{
 pub async fn get_tickets_by_page(
     app_state: web::Data<AppState>,
     req: HttpRequest,
-    form: web::Json<MGetTicketByPageRequest>,
+    form: web::Query<MGetTicketByPageRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let system = get_current_system(&req, &mut conn)?;
