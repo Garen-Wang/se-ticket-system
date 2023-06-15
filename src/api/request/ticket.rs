@@ -24,14 +24,20 @@ pub struct TicketFundRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct CreateAssistTicketRequest {
     pub ticket_id: i32,
+    pub requirements: Vec<AssistRequirementRequest>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AssistRequirementRequest {
     pub department_name: String,
-    pub amount: i32,
+    pub total_num: i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TakeTicketRequest {
-    pub ticket_id: i32,
-    pub department_name: String,
+    pub tid: i32,
+    pub is_assist: Option<bool>,
+    pub department_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -10,19 +10,23 @@ use crate::{
             MGetTicketByPageRequest, TakeTicketRequest,
         },
         response::ticket::{
-            MGetOverviewByPageResponse, TicketDetailResponse, TicketOverviewResponse,
+            HistoryTicketsResponse, MGetOverviewByPageResponse, TicketDetailResponse,
+            TicketOverviewResponse,
         },
     },
     error::{new_ok_error, AppError},
     models::{
+        assist::{Assist, AssistWithDepartments, AssistWithEmployees, InsertAssist},
         department::Department,
         employee::Employee,
-        ticket::{
-            Assist, Fund, InsertAssist, InsertFund, InsertTicket, Ticket, TicketWithDepartments,
-        },
+        ticket::{Fund, InsertFund, InsertTicket, Ticket, TicketWithDepartments},
     },
     utils::{
         auth::{get_current_employee, get_current_system, is_super_admin},
+        constant::{
+            EMPLOYEE_STATUS_AVAILABLE, EMPLOYEE_STATUS_UNAVAILABLE, TICKET_STATE_ASSIGNED,
+            TICKET_STATE_CLOSED,
+        },
         response::{new_ok_response, CommonResponse},
     },
     AppState,
@@ -76,9 +80,9 @@ pub async fn create_ticket(
         created_time: Utc::now().naive_utc(),
         updated_time: Utc::now().naive_utc(),
     };
-    // FIXME: 事务
     let ticket = Ticket::create(&mut conn, insert_ticket)?;
     let mut funds = vec![];
+    let mut sum = 0;
     for f in form.funds.iter() {
         let fund = Fund::create(
             &mut conn,
@@ -89,11 +93,13 @@ pub async fn create_ticket(
             },
         )?;
         funds.push(fund);
+        sum += f.amount;
     }
     for dep in form.departments.iter() {
         let department = Department::get_by_name(&mut conn, dep, system.id)?;
         let _ = TicketWithDepartments::create(&mut conn, ticket.id, department.id)?;
     }
+    Ticket::update_amount(&mut conn, ticket.id, sum)?;
     let resp = TicketDetailResponse::from(ticket);
     Ok(HttpResponse::Ok().json(resp))
 }
@@ -107,21 +113,27 @@ pub async fn create_assist_ticket(
     let mut conn = app_state.conn()?;
     let system = get_current_system(&req, &mut conn)?;
     let employee = get_current_employee(&req, &mut conn)?;
-    if TicketWithDepartments::is_receiver(&mut conn, form.ticket_id, employee.id)? {
-        let department = Department::get_by_name(&mut conn, &form.department_name, system.id)?;
-        let _assist = Assist::create(
-            &mut conn,
-            InsertAssist {
-                ticket_id: form.ticket_id,
-                submitter_id: employee.id,
-                department_id: department.id,
-                amount: form.amount,
-            },
-        )?;
-        let resp = new_ok_response("提交协助工单成功");
-        Ok(HttpResponse::Ok().json(resp))
+    let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
+    if let Some(receiver_id) = ticket.receiver_id {
+        if receiver_id == employee.id {
+            let assist = Assist::create(
+                &mut conn,
+                InsertAssist {
+                    ticket_id: ticket.id,
+                    submitter_id: employee.id,
+                },
+            )?;
+            for r in form.requirements.iter() {
+                let department = Department::get_by_name(&mut conn, &r.department_name, system.id)?;
+                AssistWithDepartments::create(&mut conn, assist.id, department.id, r.total_num)?;
+            }
+            let resp = new_ok_response("提交协助工单成功");
+            Ok(HttpResponse::Ok().json(resp))
+        } else {
+            Err(new_ok_error("你不是这个工单的接受人"))
+        }
     } else {
-        Err(new_ok_error("协助工单提交者没接主工单"))
+        Err(new_ok_error("这个工单还没有接受人"))
     }
 }
 
@@ -131,26 +143,42 @@ pub async fn get_current_ticket(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let employee = get_current_employee(&req, &mut conn)?;
-    let ticket_id = TicketWithDepartments::get_current_ticket_id(&mut conn, employee.id)?;
-    let ticket = Ticket::get_by_id(&mut conn, ticket_id)?;
-    let resp = TicketDetailResponse::from(ticket);
-    Ok(HttpResponse::Ok().json(resp))
+    let ticket = Ticket::get_current_by_receiver(&mut conn, employee.id)?;
+    if let Some(ticket) = ticket {
+        let resp = TicketDetailResponse::from(ticket);
+        Ok(HttpResponse::Ok().json(resp))
+    } else {
+        Err(new_ok_error("当前没有在接工单"))
+    }
 }
 
-// pub async fn get_history_tickets(
-//     app_state: web::Data<AppState>,
-//     req: HttpRequest,
-// ) -> Result<HttpResponse, AppError> {
-//     let mut conn = app_state.conn()?;
-//     let employee = get_current_employee(&req, &mut conn)?;
-//     let ans1 = Ticket::get_by_creator(&mut conn, employee.id)?;
-//     let ans2 = TicketWithDepartments::mget_by_receiver(&mut conn, employee.id)?;
-//     let ans3 = Assist::get_by_receiver(&mut conn, employee.id)?;
-//     let ans = vec![];
+pub async fn get_history_tickets(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    let employee = get_current_employee(&req, &mut conn)?;
+    // 我发布的
+    let mut ans1 = Ticket::get_by_creator(&mut conn, employee.id)?;
+    // 我领的
+    let mut ans2 = Ticket::mget_history_by_receiver(&mut conn, employee.id)?;
+    // 我领的协助工单
+    let mut ans3 = Assist::mget_history_by_receiver(&mut conn, employee.id)?;
+    // 我参与的协助工单
+    let ans4 = AssistWithEmployees::mget_assist_id_by_involver(&mut conn, employee.id)?;
+    ans1.append(&mut ans2);
+    for assist_id in ans4.into_iter() {
+        let assist = Assist::get_by_id(&mut conn, assist_id)?;
+        ans3.push(assist);
+    }
+    for assist in ans3.iter() {
+        let t = Ticket::get_by_id(&mut conn, assist.ticket_id)?;
+        ans2.push(t);
+    }
 
-//     let resp = HistoryTicketsResponse::from((ans1, ans2, ans3));
-//     Ok(HttpResponse::Ok().json(resp))
-// }
+    let resp = HistoryTicketsResponse::from((&mut conn, ans1, ans2, ans3));
+    Ok(HttpResponse::Ok().json(resp))
+}
 
 pub async fn take_ticket(
     app_state: web::Data<AppState>,
@@ -160,14 +188,38 @@ pub async fn take_ticket(
     let mut conn = app_state.conn()?;
     let employee = get_current_employee(&req, &mut conn)?;
     let system = get_current_system(&req, &mut conn)?;
-    let department = Department::get_by_name(&mut conn, &form.department_name, system.id)?;
-    TicketWithDepartments::add_receiver(&mut conn, form.ticket_id, employee.id, department.id)?;
+    match form.is_assist {
+        Some(true) => {
+            if form.department_name.is_none() {
+                return Err(new_ok_error("结束协助工单需要指定部门名称"));
+            }
+            let department = Department::get_by_name(
+                &mut conn,
+                form.department_name.as_ref().unwrap(),
+                system.id,
+            )?;
+            let assist = Assist::get_by_id(&mut conn, form.tid)?;
+            let ticket = Ticket::get_by_id(&mut conn, assist.ticket_id)?;
+            if ticket.state == TICKET_STATE_ASSIGNED {
+                AssistWithDepartments::add_person(&mut conn, assist.id, department.id)?;
 
-    let resp = new_ok_response("接取工单成功");
-    // TODO: 人的状态改变了，主工单的状态也可能改变
-    Ok(HttpResponse::Ok().json(resp))
+                AssistWithEmployees::create(&mut conn, assist.id, department.id, employee.id)?;
+                Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_UNAVAILABLE)?;
+                let resp = new_ok_response("接取协助工单成功");
+                Ok(HttpResponse::Ok().json(resp))
+            } else {
+                Err(new_ok_error("主工单还没有接受人或已经关闭"))
+            }
+        }
+        _ => {
+            let resp = new_ok_response("接取工单成功");
+            Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_UNAVAILABLE)?;
+            Ok(HttpResponse::Ok().json(resp))
+        }
+    }
 }
 
+// TODO: 暂时只针对主工单
 pub async fn finish_ticket(
     app_state: web::Data<AppState>,
     req: HttpRequest,
@@ -176,9 +228,13 @@ pub async fn finish_ticket(
     let mut conn = app_state.conn()?;
     let employee = get_current_employee(&req, &mut conn)?;
     let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
-    let associations = TicketWithDepartments::get_by_receiver(&mut conn, ticket.id, employee.id)?;
-    TicketWithDepartments::update_state(&mut conn, associations.id, 1)?;
-    let resp = new_ok_response("完成工单");
-    // TODO: 如果所有 apply_dev_info 完成，就改 ticket 状态
-    Ok(HttpResponse::Ok().json(resp))
+    if ticket.state == TICKET_STATE_CLOSED {
+        Err(new_ok_error("工单已经完成"))
+    } else {
+        // TODO: 如果他的所有协助工单还没完成，haibuneng jieshu
+        Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_CLOSED)?;
+        Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_AVAILABLE)?;
+        let resp = new_ok_response("完成工单");
+        Ok(HttpResponse::Ok().json(resp))
+    }
 }

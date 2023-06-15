@@ -8,12 +8,14 @@ use crate::{
     error::{new_ok_error, AppError},
     models::{
         account::Account,
+        approval::{Approval, InsertApproval},
         department::{Department, InsertDepartment},
         employee::{Employee, InsertEmployee},
         system::System,
     },
     utils::{
         auth::{get_current_system, is_super_admin, is_system_admin},
+        constant::{ACCOUNT_TYPE_ADMIN, APPROVAL_ID_ADMIN},
         response::CommonResponse,
     },
     AppState,
@@ -26,16 +28,18 @@ pub async fn create_system(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     if is_super_admin(&req, &mut conn)? {
-        // FIXME: 事务
+        if form.approvals.len() <= 0 {
+            return Err(new_ok_error("至少要有一个审批层级"));
+        }
         let system = System::create(&mut conn, &form.system_name)?;
         let employee = Employee::create(
             &mut conn,
             InsertEmployee {
                 name: "管理员",
-                age: 24,
+                age: 0,
                 position: Some("管理员"),
                 phone: &form.phone,
-                approval_id: None,
+                approval_id: Some(APPROVAL_ID_ADMIN),
                 system_id: system.id,
             },
         )?;
@@ -44,7 +48,7 @@ pub async fn create_system(
             employee.id,
             &form.account_name,
             &form.password,
-            0,
+            ACCOUNT_TYPE_ADMIN,
         )?;
         let system = System::set_admin_account_id(&mut conn, system.id, account.id)?;
         let mut departments = vec![];
@@ -57,6 +61,18 @@ pub async fn create_system(
                 },
             )?;
             departments.push(department);
+        }
+        for a in form.approvals.iter() {
+            Approval::create(
+                &mut conn,
+                InsertApproval {
+                    approval_level: a.approval_level,
+                    approval_name: &a.approval_name,
+                    amount: a.amount,
+                    company: a.company_name.as_ref().map(|x| &**x),
+                    system_id: system.id,
+                },
+            )?;
         }
         let resp = CreateSystemResponse::from((system, departments));
         Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
@@ -85,7 +101,12 @@ pub async fn create_employee(
     } else {
         return Err(app_error);
     }
-    // FIXME: 要用事务
+    let approval_id = match &form.approval_name {
+        Some(approval_name) => {
+            Approval::get_by_name(&mut conn, system_id, &approval_name)?.map(|x| x.id)
+        }
+        None => None,
+    };
     let employee = Employee::create(
         &mut conn,
         InsertEmployee {
@@ -93,7 +114,7 @@ pub async fn create_employee(
             age: form.age,
             position: form.position.as_ref().map(|x| &**x),
             phone: &form.phone,
-            approval_id: form.approval_id,
+            approval_id,
             system_id: form.system_id,
         },
     )?;

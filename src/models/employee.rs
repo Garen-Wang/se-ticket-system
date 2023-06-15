@@ -42,4 +42,15 @@ impl Employee {
         let employee: Employee = employee_info::table.find(id).first(conn)?;
         Ok(employee)
     }
+
+    pub fn update_state(
+        conn: &mut PgConnection,
+        id: i32,
+        state: i16,
+    ) -> Result<Employee, AppError> {
+        let employee = diesel::update(employee_info::table.filter(employee_info::id.eq(id)))
+            .set(employee_info::state.eq(state))
+            .get_result(conn)?;
+        Ok(employee)
+    }
 }

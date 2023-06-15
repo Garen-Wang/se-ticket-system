@@ -1,7 +1,11 @@
+use crate::models::employee::Employee;
 use diesel::{prelude::*, query_dsl::methods::FilterDsl};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::AppError, schema::operation_info};
+use crate::{
+    error::AppError,
+    schema::{employee_operation_info, operation_info},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Selectable, Identifiable, Queryable)]
 #[diesel(table_name = operation_info)]
@@ -29,6 +33,13 @@ impl Department {
         Ok(department)
     }
 
+    pub fn get_by_id(conn: &mut PgConnection, id: i32) -> Result<Department, AppError> {
+        let department = operation_info::table
+            .find(id)
+            .get_result::<Department>(conn)?;
+        Ok(department)
+    }
+
     pub fn get_by_name(
         conn: &mut PgConnection,
         name: &str,
@@ -43,5 +54,39 @@ impl Department {
         .limit(1)
         .first(conn)?;
         Ok(target)
+    }
+}
+
+#[derive(Debug, Clone, Identifiable, Selectable, Queryable, Associations)]
+#[diesel(belongs_to(Employee))]
+#[diesel(belongs_to(Department))]
+#[diesel(table_name = employee_operation_info)]
+#[diesel(primary_key(employee_id, department_id))]
+pub struct EmployeeWithDepartments {
+    pub id: i32,
+    pub employee_id: i32,
+    pub department_id: i32,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = employee_operation_info)]
+pub struct InsertEmployeeWithDepartments {
+    pub employee_id: i32,
+    pub department_id: i32,
+}
+
+impl EmployeeWithDepartments {
+    pub fn create(
+        conn: &mut PgConnection,
+        employee_id: i32,
+        department_id: i32,
+    ) -> Result<Self, AppError> {
+        let a = diesel::insert_into(employee_operation_info::table)
+            .values(InsertEmployeeWithDepartments {
+                employee_id,
+                department_id,
+            })
+            .get_result(conn)?;
+        Ok(a)
     }
 }

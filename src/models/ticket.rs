@@ -1,6 +1,8 @@
 use crate::{
+    error::new_ok_error,
     models::department::Department,
-    schema::{apply_dev_info, assist_info},
+    schema::apply_dev_info,
+    utils::constant::{TICKET_STATE_CLOSED, TICKET_STATE_OPEN},
 };
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -29,6 +31,7 @@ pub struct Ticket {
     pub updated_time: NaiveDateTime,
     pub expired_type: i16,
     pub system_id: i32,
+    pub receiver_id: Option<i32>,
 }
 
 #[derive(Insertable)]
@@ -112,6 +115,89 @@ impl Ticket {
             .get_results(conn)?;
         Ok(tickets)
     }
+
+    pub fn is_receiver(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        employee_id: i32,
+    ) -> Result<bool, AppError> {
+        let ticket = Self::get_by_id(conn, ticket_id)?;
+        if let Some(receiver_id) = ticket.receiver_id {
+            Ok(employee_id == receiver_id)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn set_receiver(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        receiver_id: i32,
+    ) -> Result<Ticket, AppError> {
+        let ticket = Self::get_by_id(conn, ticket_id)?;
+        if ticket.receiver_id.is_some() {
+            return Err(new_ok_error("该主工单已有接受人"));
+        }
+        let updated_ticket: Ticket = diesel::update(ticket_info::table.find(ticket_id))
+            .set(ticket_info::receiver_id.eq(receiver_id))
+            .get_result(conn)?;
+        Ok(updated_ticket)
+    }
+
+    // handler 判断 error 状态
+    pub fn get_current_by_receiver(
+        conn: &mut PgConnection,
+        receiver_id: i32,
+    ) -> Result<Option<Self>, AppError> {
+        // open 状态的工单，且 receiver 是他
+        let ticket = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::state
+                .eq(TICKET_STATE_OPEN)
+                .and(ticket_info::receiver_id.eq(receiver_id)),
+        )
+        .limit(1)
+        .get_result::<Ticket>(conn)
+        .optional()?;
+        Ok(ticket)
+    }
+
+    pub fn mget_history_by_receiver(
+        conn: &mut PgConnection,
+        receiver_id: i32,
+    ) -> Result<Vec<Self>, AppError> {
+        // 拿到所有的，不管是历史的还是现在在做的
+        let tickets = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::receiver_id
+                .eq(receiver_id)
+                .and(ticket_info::state.eq(TICKET_STATE_CLOSED)),
+        )
+        .get_results::<Ticket>(conn)?;
+        Ok(tickets)
+    }
+
+    pub fn update_state(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        new_state: i16,
+    ) -> Result<Ticket, AppError> {
+        let ticket = diesel::update(ticket_info::table.find(ticket_id))
+            .set(ticket_info::state.eq(new_state))
+            .get_result(conn)?;
+        Ok(ticket)
+    }
+
+    pub fn update_amount(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        amount: i32,
+    ) -> Result<Ticket, AppError> {
+        let ticket = diesel::update(ticket_info::table.find(ticket_id))
+            .set(ticket_info::amount.eq(amount))
+            .get_result(conn)?;
+        Ok(ticket)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, Selectable)]
@@ -167,8 +253,6 @@ pub struct TicketWithDepartments {
     pub id: i32,
     pub ticket_id: i32,
     pub department_id: i32,
-    pub receiver_id: Option<i32>,
-    pub state: i16,
 }
 
 #[derive(Insertable)]
@@ -193,130 +277,20 @@ impl TicketWithDepartments {
         Ok(a)
     }
 
-    pub fn is_receiver(
+    pub fn mget_department_by_ticket_id(
         conn: &mut PgConnection,
         ticket_id: i32,
-        receiver_id: i32,
-    ) -> Result<bool, AppError> {
-        let n: i64 = FilterDsl::filter(
+    ) -> Result<Vec<String>, AppError> {
+        let departments = FilterDsl::filter(
             apply_dev_info::table,
-            apply_dev_info::ticket_id
-                .eq(ticket_id)
-                .and(apply_dev_info::receiver_id.eq(receiver_id)),
+            apply_dev_info::ticket_id.eq(ticket_id),
         )
-        .count()
-        .get_result(conn)?;
-        Ok(n != 0)
-    }
-
-    pub fn add_receiver(
-        conn: &mut PgConnection,
-        ticket_id: i32,
-        receiver_id: i32,
-        department_id: i32,
-    ) -> Result<TicketWithDepartments, AppError> {
-        let ret = diesel::update(apply_dev_info::table)
-            .filter(
-                apply_dev_info::ticket_id
-                    .eq(ticket_id)
-                    .and(apply_dev_info::department_id.eq(department_id)),
-            )
-            .set(apply_dev_info::receiver_id.eq(receiver_id))
-            .get_result(conn)?;
-        Ok(ret)
-    }
-
-    pub fn get_by_receiver(
-        conn: &mut PgConnection,
-        ticket_id: i32,
-        receiver_id: i32,
-    ) -> Result<Self, AppError> {
-        let target = FilterDsl::filter(
-            apply_dev_info::table,
-            apply_dev_info::ticket_id
-                .eq(ticket_id)
-                .and(apply_dev_info::receiver_id.eq(receiver_id)),
-        )
-        .limit(1)
-        .first(conn)?;
-        Ok(target)
-    }
-
-    pub fn mget_by_receiver(
-        conn: &mut PgConnection,
-        receiver_id: i32,
-    ) -> Result<Vec<Self>, AppError> {
-        let target = FilterDsl::filter(
-            apply_dev_info::table,
-            apply_dev_info::receiver_id.eq(receiver_id),
-        )
-        .get_results(conn)?;
-        Ok(target)
-    }
-
-    pub fn update_state(conn: &mut PgConnection, id: i32, state: i16) -> Result<(), AppError> {
-        diesel::update(apply_dev_info::table.find(id))
-            .set(apply_dev_info::state.eq(state))
-            .execute(conn)?;
-        Ok(())
-    }
-
-    pub fn get_current_ticket_id(
-        conn: &mut PgConnection,
-        employee_id: i32,
-    ) -> Result<i32, AppError> {
-        let target: TicketWithDepartments = FilterDsl::filter(
-            apply_dev_info::table,
-            apply_dev_info::state
-                .eq(1)
-                .and(apply_dev_info::receiver_id.eq(employee_id)),
-        )
-        .limit(1)
-        .first(conn)?;
-        Ok(target.id)
-    }
-}
-
-#[derive(Debug, Clone, Identifiable, Selectable, Queryable)]
-// #[diesel(belongs_to(Ticket))]
-#[diesel(table_name = assist_info)]
-pub struct Assist {
-    pub id: i32,
-    pub state: i16,               // 0: 没人接，1：有人接
-    pub ticket_id: i32,           // 原工单
-    pub submitter_id: i32,        // 接原工单，提交协助工单的人
-    pub department_id: i32,       // 部门ID
-    pub amount: i32,              // 人数
-    pub receiver_id: Option<i32>, // 接协助工单的人
-}
-
-#[derive(Insertable)]
-#[diesel(table_name = assist_info)]
-pub struct InsertAssist {
-    pub ticket_id: i32,
-    pub submitter_id: i32,
-    pub department_id: i32,
-    pub amount: i32,
-}
-
-impl Assist {
-    pub fn create(
-        conn: &mut PgConnection,
-        insert_assist: InsertAssist,
-    ) -> Result<Assist, AppError> {
-        let assist = diesel::insert_into(assist_info::table)
-            .values(insert_assist)
-            .get_result(conn)?;
-        Ok(assist)
-    }
-
-    pub fn get_by_receiver(
-        conn: &mut PgConnection,
-        receiver_id: i32,
-    ) -> Result<Vec<Assist>, AppError> {
-        let assists =
-            FilterDsl::filter(assist_info::table, assist_info::receiver_id.eq(receiver_id))
-                .get_results(conn)?;
-        Ok(assists)
+        .get_results::<TicketWithDepartments>(conn)?;
+        let mut names = vec![];
+        for department in departments.iter() {
+            let d = Department::get_by_id(conn, department.department_id)?;
+            names.push(d.department_name);
+        }
+        Ok(names)
     }
 }

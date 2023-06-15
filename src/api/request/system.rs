@@ -7,6 +7,14 @@ pub struct CreateSystemRequest {
     pub password: String,
     pub phone: String,
     pub departments: Vec<String>,
+    pub approvals: Vec<ApprovalRequest>,
+}
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApprovalRequest {
+    pub approval_level: i32,
+    pub approval_name: String,
+    pub company_name: Option<String>,
+    pub amount: i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -18,7 +26,7 @@ pub struct RegisterRequest {
     pub position: Option<String>,
     pub phone: String,
     pub state: i16,
-    pub approval_id: Option<i32>,
+    pub approval_name: Option<String>,
 
     pub account: String,
     pub password: String,

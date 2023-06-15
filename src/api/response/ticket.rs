@@ -1,9 +1,13 @@
 use chrono::NaiveDateTime;
 use serde::Serialize;
 
-use crate::models::{
-    employee::Employee,
-    ticket::{Fund, Ticket},
+use crate::{
+    models::{
+        assist::Assist,
+        employee::Employee,
+        ticket::{Fund, Ticket, TicketWithDepartments},
+    },
+    AppConn,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -106,14 +110,66 @@ pub struct HistoryTicketsResponse {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct HistoryTicketResponse {
+    pub ticket_id: i32,
     pub title: String,
-    pub submitter_name: String,
-    pub submitter_phone: String,
-    pub receiver_name: String,
-    pub receiver_phone: String,
+    pub submitter: String,
+    pub phone_number: String,
     pub reason: String,
-    pub department: String,
+    pub departments: Vec<String>,
+    pub state: i16,
     pub submitted_time: NaiveDateTime,
-    pub finished_time: NaiveDateTime,
-    pub total_cost: i32,
+    pub submitter_ass: Option<String>,
+    pub phone_number_ass: Option<String>,
+    pub image_path: Option<String>,
+}
+
+impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTicketsResponse {
+    fn from(
+        (conn, main_tickets, ass_main_tickets, ass_tickets): (
+            &mut AppConn,
+            Vec<Ticket>,
+            Vec<Ticket>,
+            Vec<Assist>,
+        ),
+    ) -> Self {
+        let mut ret = vec![];
+        for t in main_tickets.into_iter() {
+            let employee = Employee::get_by_id(conn, t.creator_id).unwrap();
+            let departments =
+                TicketWithDepartments::mget_department_by_ticket_id(conn, t.id).unwrap();
+            ret.push(HistoryTicketResponse {
+                ticket_id: t.id,
+                title: t.title,
+                submitter: employee.name,
+                phone_number: employee.phone,
+                reason: t.reason,
+                departments,
+                state: t.state,
+                submitted_time: t.created_time,
+                submitter_ass: None,
+                phone_number_ass: None,
+                image_path: None, // TODO:
+            });
+        }
+        for (t, ass) in ass_main_tickets.into_iter().zip(ass_tickets.into_iter()) {
+            let creator = Employee::get_by_id(conn, t.creator_id).unwrap();
+            let submitter = Employee::get_by_id(conn, ass.submitter_id).unwrap();
+            let departments =
+                TicketWithDepartments::mget_department_by_ticket_id(conn, t.id).unwrap();
+            ret.push(HistoryTicketResponse {
+                ticket_id: t.id,
+                title: t.title,
+                submitter: creator.name,
+                phone_number: creator.phone,
+                reason: t.reason,
+                departments,
+                state: t.state,
+                submitted_time: t.created_time,
+                submitter_ass: Some(submitter.name),
+                phone_number_ass: Some(submitter.phone),
+                image_path: None, // TODO:
+            });
+        }
+        Self { tickets: ret }
+    }
 }

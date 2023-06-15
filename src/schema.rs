@@ -14,11 +14,9 @@ diesel::table! {
 
 diesel::table! {
     apply_dev_info (id) {
+        id -> Int4,
         ticket_id -> Int4,
         department_id -> Int4,
-        id -> Int4,
-        receiver_id -> Nullable<Int4>,
-        state -> Int2,
     }
 }
 
@@ -44,12 +42,30 @@ diesel::table! {
 }
 
 diesel::table! {
+    assist_department_info (id) {
+        id -> Int4,
+        assist_id -> Int4,
+        department_id -> Int4,
+        total_num -> Int4,
+        current_num -> Int4,
+        state -> Int2,
+    }
+}
+
+diesel::table! {
+    assist_employee_info (id) {
+        id -> Int4,
+        assist_id -> Int4,
+        department_id -> Int4,
+        employee_id -> Int4,
+    }
+}
+
+diesel::table! {
     assist_info (id) {
         ticket_id -> Int4,
         state -> Int2,
         submitter_id -> Int4,
-        department_id -> Int4,
-        amount -> Int4,
         id -> Int4,
         receiver_id -> Nullable<Int4>,
     }
@@ -127,16 +143,21 @@ diesel::table! {
         updated_time -> Timestamp,
         expired_type -> Int2,
         system_id -> Int4,
+        receiver_id -> Nullable<Int4>,
     }
 }
 
 diesel::joinable!(account_info -> employee_info (employee_id));
-diesel::joinable!(apply_dev_info -> employee_info (receiver_id));
 diesel::joinable!(apply_dev_info -> operation_info (department_id));
 diesel::joinable!(apply_dev_info -> ticket_info (ticket_id));
 diesel::joinable!(approval_info -> system_info (system_id));
 diesel::joinable!(approved_info -> approval_info (approval_id));
 diesel::joinable!(approved_info -> ticket_info (ticket_id));
+diesel::joinable!(assist_department_info -> assist_info (assist_id));
+diesel::joinable!(assist_department_info -> operation_info (department_id));
+diesel::joinable!(assist_employee_info -> assist_info (assist_id));
+diesel::joinable!(assist_employee_info -> employee_info (employee_id));
+diesel::joinable!(assist_employee_info -> operation_info (department_id));
 diesel::joinable!(assist_info -> ticket_info (ticket_id));
 diesel::joinable!(employee_info -> approval_info (approval_id));
 diesel::joinable!(employee_info -> system_info (system_id));
@@ -152,6 +173,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     apply_dev_info,
     approval_info,
     approved_info,
+    assist_department_info,
+    assist_employee_info,
     assist_info,
     employee_info,
     employee_operation_info,
