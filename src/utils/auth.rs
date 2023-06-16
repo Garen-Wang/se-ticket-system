@@ -30,6 +30,10 @@ lazy_static! {
             path: "/auth/login",
             method: Method::POST,
         },
+        SkipAuthRoute {
+            path: "/static",
+            method: Method::GET,
+        }
     ];
 }
 
@@ -73,6 +77,9 @@ impl SkipAuthRoute {
 
 fn should_skip_auth(req: &ServiceRequest) -> bool {
     let method = req.method();
+    if req.path().starts_with("/static") {
+        return true;
+    }
     if method == Method::OPTIONS {
         true
     } else {

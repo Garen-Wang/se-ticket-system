@@ -1,4 +1,5 @@
 use actix_cors::Cors;
+use actix_files::Files;
 use actix_web::{http, middleware::Logger, web, App, HttpServer};
 use diesel::{
     r2d2::{self, ConnectionManager, PooledConnection},
@@ -49,6 +50,7 @@ async fn main() -> std::io::Result<()> {
             .allowed_header(http::header::CONTENT_TYPE)
             .max_age(3600);
         App::new()
+            .service(Files::new("/static", "static/").show_files_listing())
             .wrap(Logger::default())
             .app_data(web::Data::new(app_state.clone()))
             .wrap(cors)

@@ -30,4 +30,10 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
             .route("take", web::post().to(ticket::take_ticket))
             .route("finish", web::post().to(ticket::finish_ticket)),
     );
+
+    cfg.service(
+        web::scope("/figure")
+        .route("pie", web::get().to(figure::get_pie_chart_data))
+        .route("bar", web::get().to(figure::get_bar_chart_data)),
+    );
 }
