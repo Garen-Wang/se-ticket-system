@@ -98,14 +98,8 @@ impl From<(&mut AppConn, Ticket, Assist)> for CurrentTicketResponse {
             reason: ticket.reason,
             departments,
             state: ticket.state,
-            manager_id: None,
+            manager_id: Some(assist.submitter_id),
         }
-    }
-}
-
-impl From<(&AppConn, Ticket, Assist)> for CurrentTicketResponse {
-    fn from((conn, ticket, assist): (&AppConn, Ticket, Assist)) -> Self {
-        todo!()
     }
 }
 

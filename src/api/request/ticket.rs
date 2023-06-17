@@ -43,3 +43,8 @@ pub struct TakeTicketRequest {
 pub struct FinishTicketRequest {
     pub ticket_id: i32,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetTicketByIDRequest {
+    pub ticket_id: i32,
+}

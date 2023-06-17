@@ -7,7 +7,7 @@ use crate::{
     api::{
         request::ticket::{
             CreateAssistTicketRequest, CreateTicketRequest, FinishTicketRequest,
-            MGetTicketByPageRequest, TakeTicketRequest,
+            GetTicketByIDRequest, MGetTicketByPageRequest, TakeTicketRequest,
         },
         response::ticket::{
             CurrentTicketResponse, HistoryTicketsResponse, MGetOverviewByPageResponse,
@@ -230,7 +230,7 @@ pub async fn take_ticket(
     }
 }
 
-// TODO: 暂时只针对主工单
+// 只针对主工单
 pub async fn finish_ticket(
     app_state: web::Data<AppState>,
     req: HttpRequest,
@@ -242,10 +242,33 @@ pub async fn finish_ticket(
     if ticket.state == TICKET_STATE_CLOSED {
         Err(new_ok_error("工单已经完成"))
     } else {
-        // TODO: 如果他的所有协助工单还没完成，haibuneng jieshu
         Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_CLOSED)?;
         Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_AVAILABLE)?;
         let resp = new_ok_response("完成工单");
         Ok(HttpResponse::Ok().json(resp))
     }
+}
+
+pub async fn get_current_ticket_by_id(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<GetTicketByIDRequest>,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    let _employee = get_current_employee(&req, &mut conn)?;
+    let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
+    let resp = CurrentTicketResponse::from((&mut conn, ticket));
+    Ok(HttpResponse::Ok().json(resp))
+}
+
+pub async fn get_history_ticket_by_id(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<GetTicketByIDRequest>,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    let _employee = get_current_employee(&req, &mut conn)?;
+    let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
+    let resp = HistoryTicketsResponse::from((&mut conn, vec![ticket], vec![], vec![]));
+    Ok(HttpResponse::Ok().json(resp))
 }

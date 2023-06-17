@@ -26,7 +26,15 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
             .route("page", web::get().to(ticket::get_tickets_by_page))
             .route("", web::post().to(ticket::create_ticket))
             .route("assist", web::post().to(ticket::create_assist))
+            .route(
+                "current/id",
+                web::get().to(ticket::get_current_ticket_by_id),
+            )
             .route("current", web::get().to(ticket::get_current_ticket))
+            .route(
+                "history/id",
+                web::get().to(ticket::get_history_ticket_by_id),
+            )
             .route("history", web::get().to(ticket::get_history_tickets))
             .route("take", web::post().to(ticket::take_ticket))
             .route("finish", web::post().to(ticket::finish_ticket)),
