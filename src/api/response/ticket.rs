@@ -7,6 +7,7 @@ use crate::{
         employee::Employee,
         ticket::{Fund, Ticket, TicketWithDepartments},
     },
+    utils::date_format,
     AppConn,
 };
 
@@ -23,6 +24,7 @@ pub struct TicketOverviewResponse {
     pub name: String,
     pub phone: String,
     pub money: i32,
+    #[serde(with = "date_format")]
     pub submitted_time: NaiveDateTime,
     pub reason: String,
     pub address: String,
@@ -136,6 +138,7 @@ pub struct HistoryTicketResponse {
     pub reason: String,
     pub departments: Vec<String>,
     pub state: i16,
+    #[serde(with = "date_format")]
     pub submitted_time: NaiveDateTime,
     pub submitter_ass: Option<String>,
     pub phone_number_ass: Option<String>,
