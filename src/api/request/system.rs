@@ -14,7 +14,7 @@ pub struct CreateSystemRequest {
 pub struct LevelItem {
     pub key: i64, // FIXME: 什么意思
     pub name: String,
-    pub money_limit: i32,
+    pub money_limit: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use actix_web::{error::BlockingError, http::StatusCode, HttpResponse};
 use serde::Serialize;

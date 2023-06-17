@@ -78,7 +78,7 @@ pub async fn create_system(
                 &mut conn,
                 InsertApproval {
                     approval_name: &level.name,
-                    amount: level.money_limit,
+                    amount: level.money_limit.parse::<i32>().unwrap(),
                     company: None,
                     system_id: system.id,
                 },
@@ -90,7 +90,7 @@ pub async fn create_system(
                     &mut conn,
                     InsertApproval {
                         approval_name: &level.name,
-                        amount: level.money_limit,
+                        amount: level.money_limit.parse::<i32>().unwrap(),
                         company: Some(&special_level.name),
                         system_id: system.id,
                     },
