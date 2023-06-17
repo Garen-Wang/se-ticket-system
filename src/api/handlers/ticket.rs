@@ -25,7 +25,7 @@ use crate::{
         auth::{get_current_employee, get_current_system, is_super_admin},
         constant::{
             EMPLOYEE_STATUS_AVAILABLE, EMPLOYEE_STATUS_UNAVAILABLE, TICKET_STATE_ASSIGNED,
-            TICKET_STATE_CLOSED,
+            TICKET_STATE_CLOSED, TICKET_STATE_OPEN,
         },
         response::{new_ok_response, CommonResponse},
     },
@@ -223,9 +223,15 @@ pub async fn take_ticket(
         }
         _ => {
             let resp = new_ok_response("接取工单成功");
-            Ticket::set_receiver(&mut conn, form.tid, employee.id)?;
-            Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_UNAVAILABLE)?;
-            Ok(HttpResponse::Ok().json(resp))
+            let ticket = Ticket::get_by_id(&mut conn, form.tid)?;
+            if ticket.state == TICKET_STATE_OPEN {
+                Ticket::set_receiver(&mut conn, form.tid, employee.id)?;
+                Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_ASSIGNED)?;
+                Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_UNAVAILABLE)?;
+                Ok(HttpResponse::Ok().json(resp))
+            } else {
+                Err(new_ok_error("工单没有经过完全审批或已经被其他人接受"))
+            }
         }
     }
 }

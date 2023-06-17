@@ -1,6 +1,9 @@
-pub const TICKET_STATE_OPEN: i16 = 0; // 没人接
-pub const TICKET_STATE_ASSIGNED: i16 = 1; // 有人接
-pub const TICKET_STATE_CLOSED: i16 = 2; // 关闭了
+pub const TICKET_STATE_UNAPPROVED: i16 = 0; // 未审批
+pub const TICKET_STATE_APPROVING: i16 = 1; // 审批中
+pub const TICKET_STATE_OPEN: i16 = 2; // 审批完，还没人接
+pub const TICKET_STATE_ASSIGNED: i16 = 3; // 有人接
+pub const TICKET_STATE_CLOSED: i16 = 4; // 关闭了
+pub const TICKET_STATE_REJECTED: i16 = 5; // 审批驳回
 
 pub const EMPLOYEE_STATUS_AVAILABLE: i16 = 0;
 pub const EMPLOYEE_STATUS_UNAVAILABLE: i16 = 1;
