@@ -37,7 +37,6 @@ pub struct AssistRequirementRequest {
 pub struct TakeTicketRequest {
     pub tid: i32,
     pub is_assist: Option<bool>,
-    pub department_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

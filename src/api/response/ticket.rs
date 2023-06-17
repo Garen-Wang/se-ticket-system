@@ -46,41 +46,66 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct TicketDetailResponse {
-    pub id: i32,
-    pub creator_id: i32,
-    pub approval_id: Option<i32>,
-    pub last_approver_id: Option<i32>,
+pub struct CurrentTicketResponse {
+    pub ticket_id: i32,
     pub title: String,
-    pub amount: i32,
+    pub submitter: String,
+    pub phone_nubmer: String,
+    pub submitter_ass: Option<String>,
+    pub phone_number_ass: Option<String>,
+    pub participants: Vec<String>,
     pub reason: String,
+    pub departments: Vec<String>,
     pub state: i16,
-    pub image: Option<String>,
-    pub address: String,
-    pub created_time: NaiveDateTime,
-    pub updated_time: NaiveDateTime,
-    pub expired_type: i16,
-    pub system_id: i32,
+    pub manager_id: Option<i32>,
 }
 
-impl From<Ticket> for TicketDetailResponse {
-    fn from(value: Ticket) -> Self {
+impl From<(&mut AppConn, Ticket)> for CurrentTicketResponse {
+    fn from((conn, ticket): (&mut AppConn, Ticket)) -> Self {
+        let submitter = Employee::get_by_id(conn, ticket.creator_id).unwrap();
+        let departments =
+            TicketWithDepartments::mget_department_by_ticket_id(conn, ticket.id).unwrap();
         Self {
-            id: value.id,
-            creator_id: value.creator_id,
-            approval_id: value.approval_id,
-            last_approver_id: value.last_approver_id,
-            title: value.title,
-            amount: value.amount,
-            reason: value.reason,
-            state: value.state,
-            image: value.image,
-            address: value.address,
-            created_time: value.created_time,
-            updated_time: value.updated_time,
-            expired_type: value.expired_type,
-            system_id: value.system_id,
+            ticket_id: ticket.id,
+            title: ticket.title,
+            submitter: submitter.name,
+            phone_nubmer: submitter.phone,
+            submitter_ass: None,
+            phone_number_ass: None,
+            participants: vec!["黄姥爷".into()],
+            reason: ticket.reason,
+            departments,
+            state: ticket.state,
+            manager_id: None,
         }
+    }
+}
+
+impl From<(&mut AppConn, Ticket, Assist)> for CurrentTicketResponse {
+    fn from((conn, ticket, assist): (&mut AppConn, Ticket, Assist)) -> Self {
+        let submitter = Employee::get_by_id(conn, ticket.creator_id).unwrap();
+        let assist_submitter = Employee::get_by_id(conn, assist.submitter_id).unwrap();
+        let departments =
+            TicketWithDepartments::mget_department_by_ticket_id(conn, ticket.id).unwrap();
+        Self {
+            ticket_id: ticket.id,
+            title: ticket.title,
+            submitter: submitter.name,
+            phone_nubmer: submitter.phone,
+            submitter_ass: Some(assist_submitter.name),
+            phone_number_ass: Some(assist_submitter.phone),
+            participants: vec!["黄姥爷".into()],
+            reason: ticket.reason,
+            departments,
+            state: ticket.state,
+            manager_id: None,
+        }
+    }
+}
+
+impl From<(&AppConn, Ticket, Assist)> for CurrentTicketResponse {
+    fn from((conn, ticket, assist): (&AppConn, Ticket, Assist)) -> Self {
+        todo!()
     }
 }
 

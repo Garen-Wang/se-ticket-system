@@ -25,15 +25,16 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         web::scope("/ticket")
             .route("page", web::get().to(ticket::get_tickets_by_page))
             .route("", web::post().to(ticket::create_ticket))
-            .route("assist", web::post().to(ticket::create_assist_ticket))
-            .route("", web::get().to(ticket::get_current_ticket))
+            .route("assist", web::post().to(ticket::create_assist))
+            .route("current", web::get().to(ticket::get_current_ticket))
+            .route("history", web::get().to(ticket::get_history_tickets))
             .route("take", web::post().to(ticket::take_ticket))
             .route("finish", web::post().to(ticket::finish_ticket)),
     );
 
     cfg.service(
         web::scope("/figure")
-        .route("pie", web::get().to(figure::get_pie_chart_data))
-        .route("bar", web::get().to(figure::get_bar_chart_data)),
+            .route("pie", web::get().to(figure::get_pie_chart_data))
+            .route("bar", web::get().to(figure::get_bar_chart_data)),
     );
 }

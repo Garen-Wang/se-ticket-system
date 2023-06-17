@@ -22,7 +22,6 @@ diesel::table! {
 
 diesel::table! {
     approval_info (id) {
-        approval_level -> Int4,
         #[max_length = 100]
         approval_name -> Varchar,
         amount -> Int4,
@@ -56,7 +55,6 @@ diesel::table! {
     assist_employee_info (id) {
         id -> Int4,
         assist_id -> Int4,
-        department_id -> Int4,
         employee_id -> Int4,
     }
 }
@@ -157,7 +155,6 @@ diesel::joinable!(assist_department_info -> assist_info (assist_id));
 diesel::joinable!(assist_department_info -> operation_info (department_id));
 diesel::joinable!(assist_employee_info -> assist_info (assist_id));
 diesel::joinable!(assist_employee_info -> employee_info (employee_id));
-diesel::joinable!(assist_employee_info -> operation_info (department_id));
 diesel::joinable!(assist_info -> ticket_info (ticket_id));
 diesel::joinable!(employee_info -> approval_info (approval_id));
 diesel::joinable!(employee_info -> system_info (system_id));

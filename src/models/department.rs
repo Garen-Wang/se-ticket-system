@@ -89,4 +89,17 @@ impl EmployeeWithDepartments {
             .get_result(conn)?;
         Ok(a)
     }
+
+    pub fn mget_department_id_by_employee_id(
+        conn: &mut PgConnection,
+        employee_id: i32,
+    ) -> Result<Vec<i32>, AppError> {
+        let a = FilterDsl::filter(
+            employee_operation_info::table,
+            employee_operation_info::employee_id.eq(employee_id),
+        )
+        .select(employee_operation_info::department_id)
+        .get_results::<i32>(conn)?;
+        Ok(a)
+    }
 }

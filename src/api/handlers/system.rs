@@ -1,4 +1,5 @@
 use actix_web::{web, HttpRequest, HttpResponse};
+use passwords::PasswordGenerator;
 
 use crate::{
     api::{
@@ -28,51 +29,73 @@ pub async fn create_system(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     if is_super_admin(&req, &mut conn)? {
-        if form.approvals.len() <= 0 {
+        if form.levels.len() <= 0 {
             return Err(new_ok_error("至少要有一个审批层级"));
         }
-        let system = System::create(&mut conn, &form.system_name)?;
+        let system = System::create(&mut conn, &form.name)?;
         let employee = Employee::create(
             &mut conn,
             InsertEmployee {
                 name: "管理员",
                 age: 0,
                 position: Some("管理员"),
-                phone: &form.phone,
+                phone: "12312341234",
                 approval_id: Some(APPROVAL_ID_ADMIN),
                 system_id: system.id,
             },
         )?;
+        let pg = PasswordGenerator {
+            length: 8,
+            numbers: true,
+            lowercase_letters: true,
+            uppercase_letters: true,
+            exclude_similar_characters: true,
+            symbols: true,
+            spaces: false,
+            strict: true,
+        };
         let (account, _) = Account::register(
             &mut conn,
             employee.id,
-            &form.account_name,
-            &form.password,
+            &format!("{}_admin", form.name),
+            &pg.generate_one().unwrap(),
             ACCOUNT_TYPE_ADMIN,
         )?;
         let system = System::set_admin_account_id(&mut conn, system.id, account.id)?;
         let mut departments = vec![];
-        for dep in form.departments.iter() {
+        for dep_item in form.departments.iter() {
             let department = Department::create(
                 &mut conn,
                 InsertDepartment {
-                    department_name: &dep,
+                    department_name: &dep_item.name,
                     system_id: system.id,
                 },
             )?;
             departments.push(department);
         }
-        for a in form.approvals.iter() {
+        for level in form.levels.iter() {
             Approval::create(
                 &mut conn,
                 InsertApproval {
-                    approval_level: a.approval_level,
-                    approval_name: &a.approval_name,
-                    amount: a.amount,
-                    company: a.company_name.as_ref().map(|x| &**x),
+                    approval_name: &level.name,
+                    amount: level.money_limit,
+                    company: None,
                     system_id: system.id,
                 },
             )?;
+        }
+        for special_level in form.special_levels.iter() {
+            for level in special_level.special_level.iter() {
+                Approval::create(
+                    &mut conn,
+                    InsertApproval {
+                        approval_name: &level.name,
+                        amount: level.money_limit,
+                        company: Some(&special_level.name),
+                        system_id: system.id,
+                    },
+                )?;
+            }
         }
         let resp = CreateSystemResponse::from((system, departments));
         Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))

@@ -10,14 +10,14 @@ use crate::{
             MGetTicketByPageRequest, TakeTicketRequest,
         },
         response::ticket::{
-            HistoryTicketsResponse, MGetOverviewByPageResponse, TicketDetailResponse,
+            CurrentTicketResponse, HistoryTicketsResponse, MGetOverviewByPageResponse,
             TicketOverviewResponse,
         },
     },
     error::{new_ok_error, AppError},
     models::{
         assist::{Assist, AssistWithDepartments, AssistWithEmployees, InsertAssist},
-        department::Department,
+        department::{Department, EmployeeWithDepartments},
         employee::Employee,
         ticket::{Fund, InsertFund, InsertTicket, Ticket, TicketWithDepartments},
     },
@@ -100,11 +100,11 @@ pub async fn create_ticket(
         let _ = TicketWithDepartments::create(&mut conn, ticket.id, department.id)?;
     }
     Ticket::update_amount(&mut conn, ticket.id, sum)?;
-    let resp = TicketDetailResponse::from(ticket);
+    let resp = CurrentTicketResponse::from((&mut conn, ticket));
     Ok(HttpResponse::Ok().json(resp))
 }
 
-pub async fn create_assist_ticket(
+pub async fn create_assist(
     app_state: web::Data<AppState>,
     req: HttpRequest,
     form: web::Json<CreateAssistTicketRequest>,
@@ -145,10 +145,21 @@ pub async fn get_current_ticket(
     let employee = get_current_employee(&req, &mut conn)?;
     let ticket = Ticket::get_current_by_receiver(&mut conn, employee.id)?;
     if let Some(ticket) = ticket {
-        let resp = TicketDetailResponse::from(ticket);
+        let resp = CurrentTicketResponse::from((&mut conn, ticket));
         Ok(HttpResponse::Ok().json(resp))
     } else {
-        Err(new_ok_error("当前没有在接工单"))
+        let assist_ids = AssistWithEmployees::mget_assist_id_by_involver(&mut conn, employee.id)?;
+        if assist_ids.len() > 1 {
+            return Err(new_ok_error("你接了多于1个协助工单"));
+        }
+        if assist_ids.len() == 0 {
+            return Err(new_ok_error("你没有接任何主工单或协助工单"));
+        }
+        let assist_id = assist_ids[0];
+        let assist = Assist::get_by_id(&mut conn, assist_id)?;
+        let ticket = Ticket::get_by_id(&mut conn, assist.ticket_id)?;
+        let resp = CurrentTicketResponse::from((&mut conn, ticket, assist));
+        Ok(HttpResponse::Ok().json(resp))
     }
 }
 
@@ -187,23 +198,22 @@ pub async fn take_ticket(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let employee = get_current_employee(&req, &mut conn)?;
-    let system = get_current_system(&req, &mut conn)?;
+    // let system = get_current_system(&req, &mut conn)?;
     match form.is_assist {
         Some(true) => {
-            if form.department_name.is_none() {
-                return Err(new_ok_error("结束协助工单需要指定部门名称"));
-            }
-            let department = Department::get_by_name(
-                &mut conn,
-                form.department_name.as_ref().unwrap(),
-                system.id,
-            )?;
             let assist = Assist::get_by_id(&mut conn, form.tid)?;
             let ticket = Ticket::get_by_id(&mut conn, assist.ticket_id)?;
-            if ticket.state == TICKET_STATE_ASSIGNED {
-                AssistWithDepartments::add_person(&mut conn, assist.id, department.id)?;
 
-                AssistWithEmployees::create(&mut conn, assist.id, department.id, employee.id)?;
+            if ticket.state == TICKET_STATE_ASSIGNED {
+                let ids = EmployeeWithDepartments::mget_department_id_by_employee_id(
+                    &mut conn,
+                    employee.id,
+                )?;
+                for id in ids.into_iter() {
+                    let department = Department::get_by_id(&mut conn, id)?;
+                    AssistWithDepartments::add_person(&mut conn, assist.id, department.id)?;
+                }
+                AssistWithEmployees::create(&mut conn, assist.id, employee.id)?;
                 Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_UNAVAILABLE)?;
                 let resp = new_ok_response("接取协助工单成功");
                 Ok(HttpResponse::Ok().json(resp))
@@ -213,6 +223,7 @@ pub async fn take_ticket(
         }
         _ => {
             let resp = new_ok_response("接取工单成功");
+            Ticket::set_receiver(&mut conn, form.tid, employee.id)?;
             Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_UNAVAILABLE)?;
             Ok(HttpResponse::Ok().json(resp))
         }

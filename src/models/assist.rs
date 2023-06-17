@@ -166,7 +166,6 @@ impl AssistWithDepartments {
 pub struct AssistWithEmployees {
     pub id: i32,
     pub assist_id: i32,
-    pub department_id: i32,
     pub employee_id: i32,
 }
 
@@ -174,7 +173,6 @@ pub struct AssistWithEmployees {
 #[diesel(table_name = assist_employee_info)]
 pub struct InsertAssistWithEmployees {
     pub assist_id: i32,
-    pub department_id: i32,
     pub employee_id: i32,
 }
 
@@ -182,13 +180,11 @@ impl AssistWithEmployees {
     pub fn create(
         conn: &mut PgConnection,
         assist_id: i32,
-        department_id: i32,
         employee_id: i32,
     ) -> Result<Self, AppError> {
         let a: Self = diesel::insert_into(assist_employee_info::table)
             .values(InsertAssistWithEmployees {
                 assist_id,
-                department_id,
                 employee_id,
             })
             .get_result(conn)?;
