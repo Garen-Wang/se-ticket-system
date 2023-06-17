@@ -76,18 +76,24 @@ pub async fn get_bar_chart_data(
         "daily" => {
             // get_daily_closed_ticket_count()
             // get_daily_opening_ticket_count()
+            let weekday = chrono::Local::now().weekday();
+            let times = vec![
+                "0:00-4:00",
+                "4:00-8:00",
+                "8:00-12:00",
+                "12:00-16:00",
+                "16:00-20:00",
+                "20:00-24:00",
+            ];
             let resp = {
-                let times = vec![
-                    "0:00-4:00",
-                    "4:00-8:00",
-                    "8:00-12:00",
-                    "12:00-16:00",
-                    "16:00-20:00",
-                    "20:00-24:00",
-                ];
-                let mut m = BTreeMap::new();
-                for time in times.into_iter() {
-                    m.insert(time, BarChartStateResponse { open: a, closed: b });
+                let mut m = vec![];
+                for i in 0..6 {
+                    m.push(BarChartStateResponse {
+                        weekday: weekday as i32,
+                        period: Some(times[i].into()),
+                        open: a + (i as i32) * 100,
+                        closed: b - (i as i32) * 100,
+                    })
                 }
                 m
             };
@@ -95,14 +101,16 @@ pub async fn get_bar_chart_data(
         }
         "weekly" => {
             let mut weekday = chrono::Local::now().weekday();
-            let mut m = BTreeMap::new();
+            let mut m = vec![];
             for _ in 0..7 {
                 // get_closed_ticket_count_n_day_ago(i)
                 // get_open_ticket_count_n_day_ago(i)
-                m.insert(
-                    weekday_to_string(weekday),
-                    BarChartStateResponse { open: a, closed: b },
-                );
+                m.push(BarChartStateResponse {
+                    weekday: weekday as i32,
+                    period: None,
+                    open: a,
+                    closed: b,
+                });
                 weekday = weekday.pred();
             }
             let resp = m;

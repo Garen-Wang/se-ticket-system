@@ -16,6 +16,8 @@ pub type GetBarChartDataResponse = BTreeMap<i32, BarChartStateResponse>;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BarChartStateResponse {
+    pub weekday: i32,
+    pub period: Option<String>,
     pub open: i32,
     pub closed: i32,
 }
