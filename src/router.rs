@@ -37,4 +37,6 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
             .route("pie", web::get().to(figure::get_pie_chart_data))
             .route("bar", web::get().to(figure::get_bar_chart_data)),
     );
+
+    cfg.route("/upload", web::post().to(upload::save_file));
 }
