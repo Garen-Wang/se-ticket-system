@@ -36,11 +36,11 @@ pub async fn create_system(
         let employee = Employee::create(
             &mut conn,
             InsertEmployee {
-                name: "管理员",
+                name: &format!("系统管理员_{}", system.id),
                 age: 0,
                 position: Some("管理员"),
-                phone: "12312341234",
-                approval_id: Some(APPROVAL_ID_ADMIN),
+                phone: "11111111111",
+                approval_id: None,
                 system_id: system.id,
             },
         )?;
@@ -57,7 +57,7 @@ pub async fn create_system(
         let (account, _) = Account::register(
             &mut conn,
             employee.id,
-            &format!("{}_admin", form.name),
+            &format!("admin_{}", system.id),
             &pg.generate_one().unwrap(),
             ACCOUNT_TYPE_ADMIN,
         )?;
