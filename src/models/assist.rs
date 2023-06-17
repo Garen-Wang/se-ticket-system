@@ -8,6 +8,8 @@ use crate::{
     utils::constant::{TICKET_STATE_CLOSED, TICKET_STATE_OPEN},
 };
 
+use super::employee;
+
 #[derive(Debug, Clone, Identifiable, Selectable, Queryable)]
 #[diesel(table_name = assist_info)]
 pub struct Assist {
@@ -202,5 +204,23 @@ impl AssistWithEmployees {
         .select(assist_employee_info::assist_id)
         .get_results(conn)?;
         Ok(a)
+    }
+
+    pub fn mget_participant_by_assist_id(
+        conn: &mut PgConnection,
+        assist_id: i32,
+    ) -> Result<Vec<String>, AppError> {
+        let a: Vec<i32> = FilterDsl::filter(
+            assist_employee_info::table,
+            assist_employee_info::assist_id.eq(assist_id),
+        )
+        .select(assist_employee_info::employee_id)
+        .get_results(conn)?;
+        let mut ret = vec![];
+        for id in a.into_iter() {
+            let employee = Employee::get_by_id(conn, id)?;
+            ret.push(employee.name);
+        }
+        Ok(ret)
     }
 }

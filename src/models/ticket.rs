@@ -14,6 +14,11 @@ use crate::{
     schema::{fund_list, ticket_info},
 };
 
+use super::{
+    assist::{AssistWithDepartments, AssistWithEmployees},
+    employee::Employee,
+};
+
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, Selectable)]
 #[diesel(table_name = ticket_info)]
 pub struct Ticket {
@@ -197,6 +202,23 @@ impl Ticket {
             .set(ticket_info::amount.eq(amount))
             .get_result(conn)?;
         Ok(ticket)
+    }
+
+    pub fn mget_participant(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        with_assist: bool,
+    ) -> Result<Vec<String>, AppError> {
+        let mut ret = vec![];
+        if with_assist {
+            ret = AssistWithEmployees::mget_participant_by_assist_id(conn, ticket_id)?;
+        }
+        let ticket = Self::get_by_id(conn, ticket_id)?;
+        if let Some(receiver_id) = ticket.receiver_id {
+            let receiver = Employee::get_by_id(conn, receiver_id)?;
+            ret.push(receiver.name);
+        }
+        Ok(ret)
     }
 }
 

@@ -74,7 +74,7 @@ impl From<(&mut AppConn, Ticket)> for CurrentTicketResponse {
             phone_nubmer: submitter.phone,
             submitter_ass: None,
             phone_number_ass: None,
-            participants: vec!["黄姥爷".into()],
+            participants: Ticket::mget_participant(conn, ticket.id, false).unwrap(),
             reason: ticket.reason,
             departments,
             state: ticket.state,
@@ -96,7 +96,7 @@ impl From<(&mut AppConn, Ticket, Assist)> for CurrentTicketResponse {
             phone_nubmer: submitter.phone,
             submitter_ass: Some(assist_submitter.name),
             phone_number_ass: Some(assist_submitter.phone),
-            participants: vec!["黄姥爷".into()],
+            participants: Ticket::mget_participant(conn, ticket.id, true).unwrap(),
             reason: ticket.reason,
             departments,
             state: ticket.state,
@@ -143,6 +143,8 @@ pub struct HistoryTicketResponse {
     pub submitter_ass: Option<String>,
     pub phone_number_ass: Option<String>,
     pub image_path: Option<String>,
+    pub participants: Vec<String>,
+    pub approval_info: Vec<String>,
 }
 
 impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTicketsResponse {
@@ -171,6 +173,8 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 submitter_ass: None,
                 phone_number_ass: None,
                 image_path: None, // TODO:
+                participants: Ticket::mget_participant(conn, t.id, false).unwrap(),
+                approval_info: vec!["还没做呢".into()],
             });
         }
         for (t, ass) in ass_main_tickets.into_iter().zip(ass_tickets.into_iter()) {
@@ -190,6 +194,8 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 submitter_ass: Some(submitter.name),
                 phone_number_ass: Some(submitter.phone),
                 image_path: None, // TODO:
+                participants: Ticket::mget_participant(conn, t.id, true).unwrap(),
+                approval_info: vec!["还没做呢".into()],
             });
         }
         Self { tickets: ret }
