@@ -2,6 +2,7 @@ use chrono::NaiveDateTime;
 use serde::Serialize;
 
 use crate::{
+    error::AppError,
     models::{
         assist::Assist,
         employee::Employee,
@@ -174,7 +175,7 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 phone_number_ass: None,
                 image_path: None, // TODO:
                 participants: Ticket::mget_participant(conn, t.id, false).unwrap(),
-                approval_info: vec!["还没做呢".into()],
+                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()],
             });
         }
         for (t, ass) in ass_main_tickets.into_iter().zip(ass_tickets.into_iter()) {
@@ -195,9 +196,57 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 phone_number_ass: Some(submitter.phone),
                 image_path: None, // TODO:
                 participants: Ticket::mget_participant(conn, t.id, true).unwrap(),
-                approval_info: vec!["还没做呢".into()],
+                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()],
             });
         }
         Self { tickets: ret }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PCTicketResponse {
+    pub title: String,
+    pub check_name: String,
+    pub ticket_id: i32,
+    pub submitter: String,
+    pub phone_number: String,
+    pub money: i32,
+    pub reason: String,
+    pub state: i16,
+    pub address: String,
+    #[serde(with = "date_format")]
+    pub submitted_time: NaiveDateTime,
+    pub departments: String,
+    pub detail_money: String,
+    pub image_path: Option<String>,
+}
+
+impl TryFrom<(&mut AppConn, Ticket)> for PCTicketResponse {
+    type Error = AppError;
+
+    fn try_from((conn, t): (&mut AppConn, Ticket)) -> Result<Self, Self::Error> {
+        let submitter = Employee::get_by_id(conn, t.creator_id)?;
+        let departments = TicketWithDepartments::mget_department_by_ticket_id(conn, t.id)?;
+        let funds = Fund::mget_by_ticket_id(conn, t.id)?;
+
+        Ok(Self {
+            title: t.title,
+            check_name: "黄姥爷 -> 黄姥爷 -> 黄姥爷".into(), // FIXME:
+            ticket_id: t.id,
+            submitter: submitter.name,
+            phone_number: submitter.phone,
+            money: t.amount,
+            reason: t.reason,
+            state: t.state,
+            address: t.address,
+            submitted_time: t.created_time,
+            departments: departments.join(", "),
+            detail_money: funds
+                .into_iter()
+                .map(|x| format!("{}: {}", x.reason, x.amount))
+                .collect::<Vec<String>>()
+                .join(";"),
+            image_path: None,
+        })
     }
 }

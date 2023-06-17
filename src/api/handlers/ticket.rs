@@ -11,7 +11,7 @@ use crate::{
         },
         response::ticket::{
             CurrentTicketResponse, HistoryTicketsResponse, MGetOverviewByPageResponse,
-            TicketOverviewResponse,
+            PCTicketResponse, TicketOverviewResponse,
         },
     },
     error::{new_ok_error, AppError},
@@ -45,7 +45,7 @@ pub async fn get_tickets_by_page(
     let mut ts = vec![];
     for ticket in tickets.into_iter() {
         let employee = Employee::get_by_id(&mut conn, ticket.creator_id)?;
-        let funds = Fund::get_by_ticket_id(&mut conn, ticket.id)?;
+        let funds = Fund::mget_by_ticket_id(&mut conn, ticket.id)?;
         ts.push(TicketOverviewResponse::from((ticket, employee, funds)));
     }
     Ok(
@@ -263,7 +263,7 @@ pub async fn get_current_ticket_by_id(
     let mut conn = app_state.conn()?;
     let _employee = get_current_employee(&req, &mut conn)?;
     let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
-    let resp = CurrentTicketResponse::from((&mut conn, ticket));
+    let resp = PCTicketResponse::try_from((&mut conn, ticket))?;
     Ok(HttpResponse::Ok().json(resp))
 }
 
@@ -275,6 +275,6 @@ pub async fn get_history_ticket_by_id(
     let mut conn = app_state.conn()?;
     let _employee = get_current_employee(&req, &mut conn)?;
     let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
-    let resp = HistoryTicketsResponse::from((&mut conn, vec![ticket], vec![], vec![]));
+    let resp = PCTicketResponse::try_from((&mut conn, ticket))?;
     Ok(HttpResponse::Ok().json(resp))
 }

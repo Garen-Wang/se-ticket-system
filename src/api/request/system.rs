@@ -12,20 +12,20 @@ pub struct CreateSystemRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct LevelItem {
-    pub key: i32, // FIXME: 什么意思
+    pub key: i64, // FIXME: 什么意思
     pub name: String,
     pub money_limit: i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DepItem {
-    pub key: i32, // FIXME: 什么意思
+    pub key: i64, // FIXME: 什么意思
     pub name: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpecialLevelItem {
-    pub key: i32,     // FIXME: 什么意思
+    pub key: i64,     // FIXME: 什么意思
     pub name: String, // 特殊配置的公司名字
     pub special_level: Vec<LevelItem>,
 }

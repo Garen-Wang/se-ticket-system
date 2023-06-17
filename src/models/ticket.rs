@@ -255,7 +255,7 @@ impl Fund {
         Ok(a)
     }
 
-    pub fn get_by_ticket_id(
+    pub fn mget_by_ticket_id(
         conn: &mut PgConnection,
         ticket_id: i32,
     ) -> Result<Vec<Fund>, AppError> {

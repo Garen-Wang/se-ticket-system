@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Deserializer, Serializer};
 
 const FORMAT: &'static str = "%Y-%m-%d %H:%M:%S";
