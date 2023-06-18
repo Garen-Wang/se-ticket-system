@@ -3,7 +3,8 @@ use crate::{
     models::department::Department,
     schema::apply_dev_info,
     utils::constant::{
-        TICKET_STATE_APPROVING, TICKET_STATE_CLOSED, TICKET_STATE_OPEN, TICKET_STATE_UNAPPROVED,
+        TICKET_STATE_APPROVING, TICKET_STATE_ASSIGNED, TICKET_STATE_CLOSED, TICKET_STATE_OPEN,
+        TICKET_STATE_UNAPPROVED,
     },
 };
 use chrono::NaiveDateTime;
@@ -160,7 +161,7 @@ impl Ticket {
         let ticket = FilterDsl::filter(
             ticket_info::table,
             ticket_info::state
-                .eq(TICKET_STATE_OPEN)
+                .eq(TICKET_STATE_ASSIGNED)
                 .and(ticket_info::receiver_id.eq(receiver_id)),
         )
         .limit(1)

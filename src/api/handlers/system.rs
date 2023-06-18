@@ -136,7 +136,7 @@ pub async fn create_employee(
             name: &form.name,
             age: form.age,
             position: form.position.as_ref().map(|x| &**x),
-            phone: &form.phone,
+            phone: form.phone.trim(),
             approval_id,
             system_id: form.system_id,
         },
