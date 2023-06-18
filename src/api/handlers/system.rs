@@ -17,7 +17,9 @@ use crate::{
     },
     utils::{
         auth::{get_current_system, is_super_admin, is_system_admin},
-        constant::{ACCOUNT_TYPE_ADMIN, APPROVAL_ID_ADMIN, SEX_FEMALE, SEX_MALE},
+        constant::{
+            ACCOUNT_TYPE_ADMIN, APPROVAL_ID_ADMIN, EMPLOYEE_STATUS_AVAILABLE, SEX_FEMALE, SEX_MALE,
+        },
         response::CommonResponse,
     },
     AppState,
@@ -116,14 +118,8 @@ pub async fn create_employee(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let system = get_current_system(&req, &mut conn)?;
-    let system_id = system.id;
     let app_error = new_ok_error("没有权限创建新帐号");
-    if is_super_admin(&req, &mut conn)? {
-    } else if is_system_admin(&req, &mut conn)? {
-        if system.id != system_id {
-            return Err(app_error);
-        }
-    } else {
+    if !is_super_admin(&req, &mut conn)? && !is_system_admin(&req, &mut conn)? {
         return Err(app_error);
     }
     let approval_id = if form.approval_name.len() > 0 {
@@ -163,6 +159,11 @@ pub async fn create_employee(
     )?;
     for dep in form.departments.iter() {
         let department = Department::get_by_name(&mut conn, dep, system.id)?;
+        log::info!(
+            "create, employee_id: {}, department_id: {}",
+            employee.id,
+            department.id
+        );
         EmployeeWithDepartments::create(&mut conn, employee.id, department.id)?;
     }
     let resp = CreateEmployeeResponse::from((employee, account));

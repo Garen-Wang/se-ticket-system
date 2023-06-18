@@ -55,6 +55,18 @@ impl Department {
         .first(conn)?;
         Ok(target)
     }
+
+    pub fn mget_by_system(
+        conn: &mut PgConnection,
+        system_id: i32,
+    ) -> Result<Vec<Department>, AppError> {
+        let a = FilterDsl::filter(
+            operation_info::table,
+            operation_info::system_id.eq(system_id),
+        )
+        .get_results(conn)?;
+        Ok(a)
+    }
 }
 
 #[derive(Debug, Clone, Identifiable, Selectable, Queryable, Associations)]
@@ -63,7 +75,6 @@ impl Department {
 #[diesel(table_name = employee_operation_info)]
 #[diesel(primary_key(employee_id, department_id))]
 pub struct EmployeeWithDepartments {
-    pub id: i32,
     pub employee_id: i32,
     pub department_id: i32,
 }

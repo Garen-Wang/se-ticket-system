@@ -87,10 +87,9 @@ diesel::table! {
 }
 
 diesel::table! {
-    employee_operation_info (id) {
+    employee_operation_info (employee_id, department_id) {
         employee_id -> Int4,
         department_id -> Int4,
-        id -> Int4,
     }
 }
 

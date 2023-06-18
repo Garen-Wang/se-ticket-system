@@ -60,4 +60,16 @@ impl Approval {
             .optional()?;
         Ok(approval)
     }
+
+    pub fn mget_by_company(
+        conn: &mut PgConnection,
+        system_id: i32,
+        company_name: &str,
+    ) -> Result<Vec<Approval>, AppError> {
+        let approvals = approval_info::table
+            .filter(approval_info::system_id.eq(system_id))
+            .filter(approval_info::company.eq(company_name))
+            .get_results::<Approval>(conn)?;
+        Ok(approvals)
+    }
 }
