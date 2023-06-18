@@ -278,7 +278,7 @@ pub async fn get_ticket_by_id(
     let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
     if employee.system_id == ticket.system_id {
         let resp = PCTicketResponse::try_from((&mut conn, ticket))?;
-        Ok(HttpResponse::Ok().json(resp))
+        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else {
         Err(new_ok_error("系统ID不匹配"))
     }
