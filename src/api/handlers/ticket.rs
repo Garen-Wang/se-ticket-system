@@ -143,7 +143,6 @@ pub async fn get_available_tickets(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let employee = get_current_employee(&req, &mut conn)?;
-    log::info!("employee_id: {}", employee.id);
     let department_ids =
         EmployeeWithDepartments::mget_department_id_by_employee_id(&mut conn, employee.id)?;
     let tickets = Ticket::mget_available_by_department_ids(&mut conn, department_ids)?;

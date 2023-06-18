@@ -37,15 +37,15 @@ pub async fn get_approval_levels_by_company(
     let mut conn = app_state.conn()?;
     let system = get_current_system(&req, &mut conn)?;
     let company_name = &form.company;
-    let approvals = Approval::mget_by_company(&mut conn, system.id, company_name)?;
+    let mut approvals = Approval::mget_by_company(&mut conn, system.id, company_name)?;
     if approvals.len() > 0 {
-        let resp = MGetApprovalLevelByCompanyResponse {
-            approval_names: approvals.into_iter().map(|x| x.approval_name).collect(),
-        };
-        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else {
-        Err(new_ok_error("这个公司没有特殊审批配置"))
+        approvals = Approval::mget_default(&mut conn, system.id)?;
     }
+    let resp = MGetApprovalLevelByCompanyResponse {
+        approval_names: approvals.into_iter().map(|x| x.approval_name).collect(),
+    };
+    Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
 }
 
 // 找不到位置，乱放了
