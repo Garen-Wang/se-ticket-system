@@ -16,11 +16,13 @@ use crate::{
     },
     error::{new_ok_error, AppError},
     models::{
+        approval::{Approval, ApprovalWithTicket},
         assist::{Assist, AssistWithDepartments, AssistWithEmployees, InsertAssist},
         department::{Department, EmployeeWithDepartments},
         employee::Employee,
         ticket::{Fund, InsertFund, InsertTicket, Ticket, TicketWithDepartments},
     },
+    schema::approved_info,
     utils::{
         auth::{get_current_employee, get_current_system, is_super_admin},
         constant::{
@@ -54,6 +56,37 @@ pub async fn get_tickets_by_page(
             tickets: ts,
         })),
     )
+}
+
+pub async fn get_history_tickets_by_page(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<MGetTicketByPageRequest>,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    let employee = get_current_employee(&req, &mut conn)?;
+    let system = get_current_system(&req, &mut conn)?;
+    if let Some(approval_id) = employee.approval_id {
+        let count = Ticket::get_history_count(&mut conn, system.id, approval_id)?;
+        // let approval = Approval::get_by_id(&mut conn, approval_id)?;
+        let tickets =
+            Ticket::mget_ticket_by_approval_id(&mut conn, approval_id, form.size, form.page)?;
+
+        let mut ts = vec![];
+        for ticket in tickets.into_iter() {
+            let employee = Employee::get_by_id(&mut conn, ticket.creator_id)?;
+            let funds = Fund::mget_by_ticket_id(&mut conn, ticket.id)?;
+            ts.push(TicketOverviewResponse::from((ticket, employee, funds)));
+        }
+        Ok(
+            HttpResponse::Ok().json(CommonResponse::from(MGetOverviewByPageResponse {
+                total: count,
+                tickets: ts,
+            })),
+        )
+    } else {
+        Err(new_ok_error("你不是审批人"))
+    }
 }
 
 pub async fn create_ticket(

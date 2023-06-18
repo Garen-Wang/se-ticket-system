@@ -1,7 +1,12 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{error::AppError, schema::approval_info};
+use crate::{
+    error::AppError,
+    schema::{approval_info, approved_info},
+};
+
+use super::ticket::Ticket;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Selectable, Identifiable, Queryable)]
 #[diesel(table_name = approval_info)]
@@ -30,6 +35,11 @@ impl Approval {
         let approval = diesel::insert_into(approval_info::table)
             .values(insert_appoval)
             .get_result(conn)?;
+        Ok(approval)
+    }
+
+    pub fn get_by_id(conn: &mut PgConnection, id: i32) -> Result<Approval, AppError> {
+        let approval = approval_info::table.find(id).get_result(conn)?;
         Ok(approval)
     }
 
@@ -82,5 +92,36 @@ impl Approval {
             .filter(approval_info::company.is_null())
             .get_results::<Approval>(conn)?;
         Ok(approvals)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Selectable, Identifiable, Queryable)]
+#[diesel(table_name = approved_info)]
+pub struct ApprovalWithTicket {
+    pub ticket_id: i32,
+    pub approval_id: i32,
+    pub id: i32,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = approved_info)]
+pub struct InsertApprovalWithTicket {
+    pub ticket_id: i32,
+    pub approval_id: i32,
+}
+
+impl ApprovalWithTicket {
+    pub fn create(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        approval_id: i32,
+    ) -> Result<Self, AppError> {
+        let a = diesel::insert_into(approved_info::table)
+            .values(InsertApprovalWithTicket {
+                ticket_id,
+                approval_id,
+            })
+            .get_result(conn)?;
+        Ok(a)
     }
 }

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::AppError,
-    schema::{fund_list, ticket_info},
+    schema::{approved_info, fund_list, ticket_info},
 };
 
 use super::{
@@ -93,6 +93,7 @@ impl Ticket {
         Ok(ticket)
     }
 
+    // TODO: 有问题，包含了历史审批
     pub fn get_count(conn: &mut PgConnection, system_id: i32) -> Result<i64, AppError> {
         let target = FilterDsl::filter(ticket_info::table, ticket_info::system_id.eq(system_id))
             .count()
@@ -100,6 +101,7 @@ impl Ticket {
         Ok(target)
     }
 
+    // TODO: 有问题，包含了历史审批
     pub fn mget_by_page(
         conn: &mut PgConnection,
         system_id: i32,
@@ -110,6 +112,44 @@ impl Ticket {
             .limit(size as i64)
             .offset(((page - 1) * size) as i64)
             .get_results(conn)?;
+        Ok(tickets)
+    }
+
+    pub fn get_history_count(
+        conn: &mut PgConnection,
+        system_id: i32,
+        approval_id: i32,
+    ) -> Result<i64, AppError> {
+        let a = FilterDsl::filter(
+            approved_info::table,
+            approved_info::approval_id.eq(approval_id),
+        )
+        .select(approved_info::ticket_id)
+        .count()
+        .get_result(conn)?;
+        Ok(a)
+    }
+
+    // 我审批过的工单
+    pub fn mget_ticket_by_approval_id(
+        conn: &mut PgConnection,
+        approval_id: i32,
+        size: i32,
+        page: i32,
+    ) -> Result<Vec<Ticket>, AppError> {
+        let a: Vec<i32> = FilterDsl::filter(
+            approved_info::table,
+            approved_info::approval_id.eq(approval_id),
+        )
+        .select(approved_info::ticket_id)
+        .limit(size as i64)
+        .offset(((page - 1) * size) as i64)
+        .get_results(conn)?;
+        let mut tickets = vec![];
+        for id in a.into_iter() {
+            let ticket = Ticket::get_by_id(conn, id)?;
+            tickets.push(ticket);
+        }
         Ok(tickets)
     }
 
