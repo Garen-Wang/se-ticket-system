@@ -23,8 +23,8 @@ pub enum AppError {
     #[error("Unprocessable Entity: {0}")]
     UnprocessableEntity(ErrMessage), // 422
 
-    #[error("Internal Server Error")]
-    InternalServerError,
+    #[error("Internal Server Error: {0}")]
+    InternalServerError(ErrMessage), // 500
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -55,8 +55,8 @@ impl actix_web::error::ResponseError for AppError {
             AppError::UnprocessableEntity(val) => {
                 HttpResponse::UnprocessableEntity().json(CommonResponse::from(val))
             }
-            AppError::InternalServerError => {
-                HttpResponse::InternalServerError().json("internal server error")
+            AppError::InternalServerError(val) => {
+                HttpResponse::InternalServerError().json(CommonResponse::from(val))
             }
             AppError::Ok(val) => HttpResponse::Ok().json(CommonResponse::from(val)),
         }
@@ -69,7 +69,7 @@ impl actix_web::error::ResponseError for AppError {
             AppError::Forbidden(_) => StatusCode::FORBIDDEN,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -77,7 +77,9 @@ impl actix_web::error::ResponseError for AppError {
 impl From<bcrypt::BcryptError> for AppError {
     fn from(e: bcrypt::BcryptError) -> Self {
         log::error!("bcrypt::BcryptError: {}", e);
-        AppError::InternalServerError
+        AppError::InternalServerError(ErrMessage {
+            error: e.to_string(),
+        })
     }
 }
 
@@ -87,7 +89,9 @@ impl From<diesel::result::Error> for AppError {
             diesel::result::Error::NotFound => new_ok_error("requested record not found"),
             e => {
                 log::error!("diesel::result::Error: {}", e);
-                AppError::InternalServerError
+                AppError::InternalServerError(ErrMessage {
+                    error: e.to_string(),
+                })
             }
         }
     }
@@ -112,20 +116,26 @@ impl From<jsonwebtoken::errors::Error> for AppError {
 impl From<r2d2::Error> for AppError {
     fn from(e: r2d2::Error) -> Self {
         log::error!("r2d2::Error: {}", e);
-        AppError::InternalServerError
+        AppError::InternalServerError(ErrMessage {
+            error: e.to_string(),
+        })
     }
 }
 
 impl From<BlockingError> for AppError {
     fn from(e: BlockingError) -> Self {
         log::error!("BlockingError: {}", e);
-        AppError::InternalServerError
+        AppError::InternalServerError(ErrMessage {
+            error: e.to_string(),
+        })
     }
 }
 
 impl From<std::io::Error> for AppError {
     fn from(e: std::io::Error) -> Self {
         log::error!("std::io::Error: {}", e);
-        AppError::InternalServerError
+        AppError::InternalServerError(ErrMessage {
+            error: e.to_string(),
+        })
     }
 }

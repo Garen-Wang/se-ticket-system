@@ -1,4 +1,5 @@
 use actix_web::{web, HttpRequest, HttpResponse};
+use diesel::query_source::AppearsInFromClause;
 use passwords::PasswordGenerator;
 
 use crate::{
@@ -10,13 +11,13 @@ use crate::{
     models::{
         account::Account,
         approval::{Approval, InsertApproval},
-        department::{Department, InsertDepartment},
+        department::{Department, EmployeeWithDepartments, InsertDepartment},
         employee::{Employee, InsertEmployee},
         system::System,
     },
     utils::{
         auth::{get_current_system, is_super_admin, is_system_admin},
-        constant::{ACCOUNT_TYPE_ADMIN, APPROVAL_ID_ADMIN},
+        constant::{ACCOUNT_TYPE_ADMIN, APPROVAL_ID_ADMIN, SEX_FEMALE, SEX_MALE},
         response::CommonResponse,
     },
     AppState,
@@ -42,6 +43,7 @@ pub async fn create_system(
                 phone: "11111111111",
                 approval_id: None,
                 system_id: system.id,
+                sex: SEX_MALE,
             },
         )?;
         let pg = PasswordGenerator {
@@ -113,32 +115,43 @@ pub async fn create_employee(
     form: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
-    let system_id = form.system_id;
+    let system = get_current_system(&req, &mut conn)?;
+    let system_id = system.id;
     let app_error = new_ok_error("没有权限创建新帐号");
     if is_super_admin(&req, &mut conn)? {
     } else if is_system_admin(&req, &mut conn)? {
-        let system = get_current_system(&req, &mut conn)?;
         if system.id != system_id {
             return Err(app_error);
         }
     } else {
         return Err(app_error);
     }
-    let approval_id = match &form.approval_name {
-        Some(approval_name) => {
-            Approval::get_by_name(&mut conn, system_id, &approval_name)?.map(|x| x.id)
+    let approval_id = if form.approval_name.len() > 0 {
+        Approval::get_by_name(&mut conn, system.id, &form.approval_name)?.map(|x| x.id)
+    } else {
+        None
+    };
+    let sex = match form.sex.as_str() {
+        "0" | "female" | "woman" | "女" => SEX_FEMALE,
+        "1" | "male" | "man" | "男" => SEX_MALE,
+        _ => {
+            return Err(app_error);
         }
-        None => None,
     };
     let employee = Employee::create(
         &mut conn,
         InsertEmployee {
             name: &form.name,
-            age: form.age,
-            position: form.position.as_ref().map(|x| &**x),
-            phone: form.phone.trim(),
+            age: form.age.parse().unwrap(),
+            position: if form.position.len() > 0 {
+                Some(&form.position)
+            } else {
+                None
+            },
+            phone: &form.phone_number.trim(),
             approval_id,
-            system_id: form.system_id,
+            system_id: system.id,
+            sex,
         },
     )?;
     let (account, _) = Account::register(
@@ -148,6 +161,10 @@ pub async fn create_employee(
         &form.password,
         form.account_type,
     )?;
+    for dep in form.departments.iter() {
+        let department = Department::get_by_name(&mut conn, dep, system.id)?;
+        EmployeeWithDepartments::create(&mut conn, employee.id, department.id)?;
+    }
     let resp = CreateEmployeeResponse::from((employee, account));
     Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
 }

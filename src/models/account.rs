@@ -2,7 +2,11 @@ use chrono::Utc;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{error::AppError, schema::account_info, utils};
+use crate::{
+    error::{new_ok_error, AppError, ErrMessage},
+    schema::account_info,
+    utils,
+};
 
 use super::employee::Employee;
 
@@ -84,7 +88,7 @@ impl Account {
             let token = account.generate_token()?;
             Ok((account, token))
         } else {
-            Err(AppError::InternalServerError)
+            Err(new_ok_error("登录失败"))
         }
     }
 

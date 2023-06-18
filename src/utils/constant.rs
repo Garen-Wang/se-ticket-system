@@ -15,3 +15,6 @@ pub const ACCOUNT_TYPE_VIEWER: i16 = 3; // 可以看报表的人
 pub const ACCOUNT_TYPE_APPLICANT: i16 = 4; // 申请工单的人
 
 pub const APPROVAL_ID_ADMIN: i32 = 0; // 特殊的 approval id，看到就是管理员
+
+pub const SEX_FEMALE: i16 = 0;
+pub const SEX_MALE: i16 = 1;

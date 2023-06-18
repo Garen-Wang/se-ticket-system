@@ -82,6 +82,7 @@ diesel::table! {
         state -> Int2,
         approval_id -> Nullable<Int4>,
         system_id -> Int4,
+        sex -> Int2,
     }
 }
 

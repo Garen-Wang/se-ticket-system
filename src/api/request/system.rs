@@ -40,16 +40,15 @@ struct ApprovalRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RegisterRequest {
-    pub system_id: i32,
-
-    pub name: String,
-    pub age: i32,
-    pub position: Option<String>,
-    pub phone: String,
-    pub state: i16,
-    pub approval_name: Option<String>,
-
     pub account: String,
     pub password: String,
+    pub name: String,
+    pub age: String,
+    pub phone_number: String,
+    pub sex: String,
     pub account_type: i16,
+    pub position: String,
+    pub company: String,
+    pub departments: Vec<String>,
+    pub approval_name: String,
 }
