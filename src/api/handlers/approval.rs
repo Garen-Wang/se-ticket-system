@@ -2,13 +2,14 @@ use actix_web::{web, HttpRequest, HttpResponse};
 
 use crate::{
     api::{
-        request::approval::MGetApprovalLevelByCompanyRequest,
+        request::approval::{ApproveRejectTicketRequest, MGetApprovalLevelByCompanyRequest},
         response::approval::{MGetApprovalLevelByCompanyResponse, MGetDepartmentBySystemResponse},
     },
     error::{new_ok_error, AppError},
-    models::{approval::Approval, department::Department},
+    models::{approval::Approval, department::Department, ticket::Ticket},
     utils::{
-        auth::get_current_system,
+        auth::{get_current_employee, get_current_system},
+        constant::{TICKET_STATE_CLOSED, TICKET_STATE_OPEN},
         response::{new_ok_response, CommonResponse},
     },
     AppState,
@@ -24,10 +25,36 @@ pub async fn list_approving_tickets(
 }
 
 // 审批一个工单
-pub async fn approve_ticket() {}
+pub async fn approve_ticket(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<ApproveRejectTicketRequest>,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    // let employee = get_current_employee(&req, &mut conn)?;
+    // if employee.approval_id.is_none() {
+    //     Err(new_ok_error("你不是审批人"))
+    // } else {
+    Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_OPEN)?;
+    Ok(HttpResponse::Ok().json(new_ok_response("已通过")))
+    // }
+}
 
 // 拒绝一个工单
-pub async fn reject_ticket() {}
+pub async fn reject_ticket(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<ApproveRejectTicketRequest>,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    // let employee = get_current_employee(&req, &mut conn)?;
+    // if employee.approval_id.is_none() {
+    //     Err(new_ok_error("你不是审批人"))
+    // } else {
+    Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_CLOSED)?;
+    Ok(HttpResponse::Ok().json(new_ok_response("已驳回")))
+    // }
+}
 
 pub async fn get_approval_levels_by_company(
     app_state: web::Data<AppState>,

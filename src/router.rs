@@ -23,6 +23,8 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 
     cfg.service(
         web::scope("/ticket")
+            .route("approve", web::get().to(approval::approve_ticket))
+            .route("reject", web::get().to(approval::reject_ticket))
             .route("page", web::get().to(ticket::get_tickets_by_page))
             .route("", web::post().to(ticket::create_ticket))
             .route("assist", web::post().to(ticket::create_assist))
@@ -40,7 +42,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 
     cfg.service(web::scope("/department").route("", web::get().to(approval::list_departments)));
     cfg.service(
-        web::scope("approval").route("", web::get().to(approval::get_approval_levels_by_company)),
+        web::scope("/approval").route("", web::get().to(approval::get_approval_levels_by_company)),
     );
 
     cfg.service(
