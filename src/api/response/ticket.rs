@@ -8,7 +8,7 @@ use crate::{
         employee::Employee,
         ticket::{Fund, Ticket, TicketWithDepartments},
     },
-    utils::date_format,
+    utils::{constant::TEST_IMAGE_PATH, date_format},
     AppConn,
 };
 
@@ -37,7 +37,7 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
         Self {
             tid: ticket.id,
             title: ticket.title,
-            phone: employee.phone,
+            phone: employee.phone.trim().to_string(),
             name: employee.name,
             money: ticket.amount,
             submitted_time: ticket.created_time,
@@ -90,7 +90,7 @@ impl From<(&mut AppConn, Ticket)> for CurrentTicketResponse {
             ticket_id: ticket.id,
             title: ticket.title,
             submitter: submitter.name,
-            phone_nubmer: submitter.phone,
+            phone_nubmer: submitter.phone.trim().to_string(),
             submitter_ass: None,
             phone_number_ass: None,
             participants: Ticket::mget_participant(conn, ticket.id, false).unwrap(),
@@ -112,9 +112,9 @@ impl From<(&mut AppConn, Ticket, Assist)> for CurrentTicketResponse {
             ticket_id: ticket.id,
             title: ticket.title,
             submitter: submitter.name,
-            phone_nubmer: submitter.phone,
+            phone_nubmer: submitter.phone.trim().to_string(),
             submitter_ass: Some(assist_submitter.name),
-            phone_number_ass: Some(assist_submitter.phone),
+            phone_number_ass: Some(assist_submitter.phone.trim().to_string()),
             participants: Ticket::mget_participant(conn, ticket.id, true).unwrap(),
             reason: ticket.reason,
             departments,
@@ -184,14 +184,14 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 ticket_id: t.id,
                 title: t.title,
                 submitter: employee.name,
-                phone_number: employee.phone,
+                phone_number: employee.phone.trim().to_string(),
                 reason: t.reason,
                 departments,
                 state: t.state,
                 submitted_time: t.created_time,
                 submitter_ass: None,
                 phone_number_ass: None,
-                image_path: None, // TODO:
+                image_path: Some(TEST_IMAGE_PATH.into()), // TODO:
                 participants: Ticket::mget_participant(conn, t.id, false).unwrap(),
                 approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()],
             });
@@ -205,14 +205,14 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 ticket_id: t.id,
                 title: t.title,
                 submitter: creator.name,
-                phone_number: creator.phone,
+                phone_number: creator.phone.trim().to_string(),
                 reason: t.reason,
                 departments,
                 state: t.state,
                 submitted_time: t.created_time,
                 submitter_ass: Some(submitter.name),
-                phone_number_ass: Some(submitter.phone),
-                image_path: None, // TODO:
+                phone_number_ass: Some(submitter.phone.trim().to_string()),
+                image_path: Some(TEST_IMAGE_PATH.into()), // TODO:
                 participants: Ticket::mget_participant(conn, t.id, true).unwrap(),
                 approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()],
             });
@@ -252,7 +252,7 @@ impl TryFrom<(&mut AppConn, Ticket)> for PCTicketResponse {
             check_name: "黄姥爷 -> 黄姥爷 -> 黄姥爷".into(), // FIXME:
             ticket_id: t.id,
             submitter: submitter.name,
-            phone_number: submitter.phone,
+            phone_number: submitter.phone.trim().to_string(),
             money: t.amount,
             reason: t.reason,
             state: t.state,
@@ -264,7 +264,7 @@ impl TryFrom<(&mut AppConn, Ticket)> for PCTicketResponse {
                 .map(|x| format!("{}: {}", x.reason, x.amount))
                 .collect::<Vec<String>>()
                 .join(";"),
-            image_path: Some("http://8.134.67.143:7878/static/image1.jpeg".into()), // FIXME:
+            image_path: Some(TEST_IMAGE_PATH.into()), // FIXME:
         })
     }
 }

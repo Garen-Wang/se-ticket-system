@@ -50,7 +50,7 @@ impl From<(Employee, Account)> for CreateEmployeeResponse {
             employee_id: employee.id,
             name: employee.name,
             account: account.account_name,
-            phone: employee.phone,
+            phone: employee.phone.trim().to_string(),
             approval_id: employee.approval_id,
             account_type: account.account_type,
         }
