@@ -268,26 +268,18 @@ pub async fn finish_ticket(
     }
 }
 
-pub async fn get_current_ticket_by_id(
+pub async fn get_ticket_by_id(
     app_state: web::Data<AppState>,
     req: HttpRequest,
     form: web::Query<GetTicketByIDRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
-    let _employee = get_current_employee(&req, &mut conn)?;
+    let employee = get_current_employee(&req, &mut conn)?;
     let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
-    let resp = PCTicketResponse::try_from((&mut conn, ticket))?;
-    Ok(HttpResponse::Ok().json(resp))
-}
-
-pub async fn get_history_ticket_by_id(
-    app_state: web::Data<AppState>,
-    req: HttpRequest,
-    form: web::Query<GetTicketByIDRequest>,
-) -> Result<HttpResponse, AppError> {
-    let mut conn = app_state.conn()?;
-    let _employee = get_current_employee(&req, &mut conn)?;
-    let ticket = Ticket::get_by_id(&mut conn, form.ticket_id)?;
-    let resp = PCTicketResponse::try_from((&mut conn, ticket))?;
-    Ok(HttpResponse::Ok().json(resp))
+    if employee.system_id == ticket.system_id {
+        let resp = PCTicketResponse::try_from((&mut conn, ticket))?;
+        Ok(HttpResponse::Ok().json(resp))
+    } else {
+        Err(new_ok_error("系统ID不匹配"))
+    }
 }
