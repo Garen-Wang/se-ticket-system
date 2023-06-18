@@ -264,7 +264,7 @@ impl TryFrom<(&mut AppConn, Ticket)> for PCTicketResponse {
                 .map(|x| format!("{}: {}", x.reason, x.amount))
                 .collect::<Vec<String>>()
                 .join(";"),
-            image_path: None,
+            image_path: Some("http://8.134.67.143:7878/static/image1.jpeg".into()), // FIXME:
         })
     }
 }
