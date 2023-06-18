@@ -49,6 +49,24 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct AvailableTicketsResponse {
+    pub tickets: Vec<CurrentTicketResponse>,
+}
+
+impl From<(&mut AppConn, Vec<Ticket>)> for AvailableTicketsResponse {
+    fn from((conn, tickets): (&mut AppConn, Vec<Ticket>)) -> Self {
+        let mut new_tickets = vec![];
+        for ticket in tickets.into_iter() {
+            let new_ticket = CurrentTicketResponse::from((&mut *conn, ticket));
+            new_tickets.push(new_ticket);
+        }
+        Self {
+            tickets: new_tickets,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct CurrentTicketResponse {
     pub ticket_id: i32,
     pub title: String,

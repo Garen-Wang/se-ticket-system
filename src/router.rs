@@ -1,6 +1,6 @@
 use actix_web::{web, HttpResponse};
 
-use crate::api::handlers::*;
+use crate::api::handlers::{ticket::get_available_tickets, *};
 
 async fn healthcheck() -> HttpResponse {
     HttpResponse::Ok().finish()
@@ -36,6 +36,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
                 web::get().to(ticket::get_history_ticket_by_id),
             )
             .route("history", web::get().to(ticket::get_history_tickets))
+            .route("available", web::get().to(get_available_tickets))
             .route("take", web::post().to(ticket::take_ticket))
             .route("finish", web::post().to(ticket::finish_ticket)),
     );

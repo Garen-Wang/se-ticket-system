@@ -2,7 +2,9 @@ use crate::{
     error::new_ok_error,
     models::department::Department,
     schema::apply_dev_info,
-    utils::constant::{TICKET_STATE_CLOSED, TICKET_STATE_OPEN},
+    utils::constant::{
+        TICKET_STATE_APPROVING, TICKET_STATE_CLOSED, TICKET_STATE_OPEN, TICKET_STATE_UNAPPROVED,
+    },
 };
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -219,6 +221,43 @@ impl Ticket {
             ret.push(receiver.name);
         }
         Ok(ret)
+    }
+
+    pub fn mget_approving_ticket_by_system_id(
+        conn: &mut PgConnection,
+        system_id: i32,
+    ) -> Result<Vec<Ticket>, AppError> {
+        let tickets = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::system_id.eq(system_id).and(
+                ticket_info::state
+                    .ge(TICKET_STATE_UNAPPROVED)
+                    .and(ticket_info::state.le(TICKET_STATE_APPROVING)),
+            ),
+        )
+        .get_results(conn)?;
+        Ok(tickets)
+    }
+
+    pub fn mget_available_by_department_ids(
+        conn: &mut PgConnection,
+        department_ids: Vec<i32>,
+    ) -> Result<Vec<Ticket>, AppError> {
+        let ticket_ids: Vec<i32> = FilterDsl::filter(
+            apply_dev_info::table,
+            apply_dev_info::department_id.eq_any(department_ids),
+        )
+        .select(apply_dev_info::ticket_id)
+        .get_results(conn)?;
+
+        let assists = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::id
+                .eq_any(ticket_ids)
+                .and(ticket_info::state.eq(TICKET_STATE_OPEN)),
+        )
+        .get_results(conn)?;
+        Ok(assists)
     }
 }
 

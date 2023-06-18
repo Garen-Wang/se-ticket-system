@@ -10,8 +10,8 @@ use crate::{
             GetTicketByIDRequest, MGetTicketByPageRequest, TakeTicketRequest,
         },
         response::ticket::{
-            CurrentTicketResponse, HistoryTicketsResponse, MGetOverviewByPageResponse,
-            PCTicketResponse, TicketOverviewResponse,
+            AvailableTicketsResponse, CurrentTicketResponse, HistoryTicketsResponse,
+            MGetOverviewByPageResponse, PCTicketResponse, TicketOverviewResponse,
         },
     },
     error::{new_ok_error, AppError},
@@ -135,6 +135,20 @@ pub async fn create_assist(
     } else {
         Err(new_ok_error("这个工单还没有接受人"))
     }
+}
+
+pub async fn get_available_tickets(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    let employee = get_current_employee(&req, &mut conn)?;
+    log::info!("employee_id: {}", employee.id);
+    let department_ids =
+        EmployeeWithDepartments::mget_department_id_by_employee_id(&mut conn, employee.id)?;
+    let tickets = Ticket::mget_available_by_department_ids(&mut conn, department_ids)?;
+    let resp = AvailableTicketsResponse::from((&mut conn, tickets));
+    Ok(HttpResponse::Ok().json(resp))
 }
 
 pub async fn get_current_ticket(

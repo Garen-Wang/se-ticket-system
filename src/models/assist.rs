@@ -57,22 +57,6 @@ impl Assist {
         Ok(assists)
     }
 
-    // pub fn mget_available_by_department(
-    //     conn: &mut PgConnection,
-    //     department_id: i32,
-    // ) -> Result<Vec<Assist>, AppError> {
-    //     use crate::schema::assist_department_info::dsl::*;
-    //     use crate::schema::assist_info::dsl::*;
-    //     let join = assist_department_info
-    //         .inner_join(assist_info.on(assist_department_info::assist_id.eq(assist_info::id)));
-    //     let assists = join
-    //         .filter(assist_department_info::department_id.eq(department_id))
-    //         .filter(assist_info::state.eq(TICKET_STATE_OPEN))
-    //         .select(assist_info::all_columns())
-    //         .get_results::<Assist>(conn)?;
-    //     Ok(assists)
-    // }
-
     pub fn mget_history_by_receiver(
         conn: &mut PgConnection,
         receiver: i32,
