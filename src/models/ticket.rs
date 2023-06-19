@@ -105,7 +105,8 @@ impl Ticket {
             ticket_info::table,
             ticket_info::system_id
                 .eq(system_id)
-                .and(ticket_info::approval_id.eq(approval_id)),
+                .and(ticket_info::approval_id.eq(approval_id))
+                .and(ticket_info::state.lt(TICKET_STATE_OPEN)),
         )
         .count()
         .get_result(conn)?;
@@ -137,7 +138,8 @@ impl Ticket {
             ticket_info::table,
             ticket_info::system_id
                 .eq(system_id)
-                .and(ticket_info::approval_id.eq(approval_id)),
+                .and(ticket_info::approval_id.eq(approval_id))
+                .and(ticket_info::state.lt(TICKET_STATE_OPEN)),
         )
         .limit(size as i64)
         .offset(((page - 1) * size) as i64)
