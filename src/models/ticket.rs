@@ -56,12 +56,10 @@ pub struct InsertTicket<'a> {
 #[diesel(table_name = ticket_info)]
 pub struct UpdateTicket {
     pub last_approver_id: Option<i32>,
-    pub title: Option<String>,
     pub amount: Option<i32>,
-    pub reason: Option<String>,
     pub state: Option<i16>,
-    pub image: Option<String>,
-    pub address: Option<String>,
+    pub approval_id: Option<Option<i32>>,
+    pub receiver_id: Option<i32>,
 }
 
 // static methods
@@ -151,17 +149,33 @@ impl Ticket {
         conn: &mut PgConnection,
         approval_id: i32,
         employee_id: i32,
+        id: Option<i32>,
+        title: Option<String>,
     ) -> Result<i64, AppError> {
-        let a = FilterDsl::filter(
-            approved_info::table,
+        let mut query = approved_info::table.into_boxed();
+        query = FilterDsl::filter(
+            query,
             approved_info::approval_id
                 .eq(approval_id)
                 .and(approved_info::employee_id.eq(employee_id)),
-        )
-        .select(approved_info::ticket_id)
-        .count()
-        .get_result(conn)?;
-        Ok(a)
+        );
+        if let Some(id) = id {
+            query = FilterDsl::filter(query, approved_info::ticket_id.eq(id));
+        }
+        let ticket_ids: Vec<i32> = query.select(approved_info::ticket_id).get_results(conn)?;
+        if let Some(title) = title {
+            let a = FilterDsl::filter(
+                ticket_info::table,
+                ticket_info::id
+                    .eq_any(ticket_ids)
+                    .and(ticket_info::title.ilike(format!("%{}%", title))),
+            )
+            .count()
+            .get_result(conn)?;
+            Ok(a)
+        } else {
+            Ok(ticket_ids.len() as i64)
+        }
     }
 
     // 我审批过的工单
@@ -169,24 +183,32 @@ impl Ticket {
         conn: &mut PgConnection,
         approval_id: i32,
         employee_id: i32,
+        id: Option<i32>,
+        title: Option<String>,
         size: i32,
         page: i32,
     ) -> Result<Vec<Ticket>, AppError> {
-        let a: Vec<i32> = FilterDsl::filter(
-            approved_info::table,
+        let mut query = approved_info::table.into_boxed();
+        query = FilterDsl::filter(
+            query,
             approved_info::approval_id
                 .eq(approval_id)
                 .and(approved_info::employee_id.eq(employee_id)),
-        )
-        .select(approved_info::ticket_id)
-        .limit(size as i64)
-        .offset(((page - 1) * size) as i64)
-        .get_results(conn)?;
-        let mut tickets = vec![];
-        for id in a.into_iter() {
-            let ticket = Ticket::get_by_id(conn, id)?;
-            tickets.push(ticket);
+        );
+        if let Some(id) = id {
+            query = FilterDsl::filter(query, approved_info::ticket_id.eq(id));
         }
+        let ticket_ids: Vec<i32> = query
+            .select(approved_info::ticket_id)
+            .limit(size as i64)
+            .offset(((page - 1) * size) as i64)
+            .get_results(conn)?;
+        let mut query = ticket_info::table.into_boxed();
+        query = FilterDsl::filter(query, ticket_info::id.eq_any(ticket_ids));
+        if let Some(title) = title {
+            query = FilterDsl::filter(query, ticket_info::title.like(format!("%{}%", title)));
+        }
+        let tickets: Vec<Ticket> = query.get_results(conn)?;
         Ok(tickets)
     }
 
@@ -224,7 +246,14 @@ impl Ticket {
             return Err(new_ok_error("该主工单已有接受人"));
         }
         let updated_ticket: Ticket = diesel::update(ticket_info::table.find(ticket_id))
-            .set(ticket_info::receiver_id.eq(receiver_id))
+            // .set(ticket_info::receiver_id.eq(receiver_id))
+            .set(UpdateTicket {
+                last_approver_id: None,
+                amount: None,
+                state: None,
+                approval_id: None,
+                receiver_id: Some(receiver_id),
+            })
             .get_result(conn)?;
         Ok(updated_ticket)
     }
@@ -268,7 +297,14 @@ impl Ticket {
         new_state: i16,
     ) -> Result<Ticket, AppError> {
         let ticket = diesel::update(ticket_info::table.find(ticket_id))
-            .set(ticket_info::state.eq(new_state))
+            // .set(ticket_info::state.eq(new_state))
+            .set(UpdateTicket {
+                last_approver_id: None,
+                amount: None,
+                state: Some(new_state),
+                approval_id: None,
+                receiver_id: None,
+            })
             .get_result(conn)?;
         Ok(ticket)
     }
@@ -279,7 +315,14 @@ impl Ticket {
         amount: i32,
     ) -> Result<Ticket, AppError> {
         let ticket = diesel::update(ticket_info::table.find(ticket_id))
-            .set(ticket_info::amount.eq(amount))
+            // .set(ticket_info::amount.eq(amount))
+            .set(UpdateTicket {
+                last_approver_id: None,
+                amount: Some(amount),
+                state: None,
+                approval_id: None,
+                receiver_id: None,
+            })
             .get_result(conn)?;
         Ok(ticket)
     }
@@ -341,11 +384,18 @@ impl Ticket {
     pub fn update_approval_id(
         conn: &mut PgConnection,
         ticket_id: i32,
-        approval_id: i32,
+        approval_id: Option<i32>,
     ) -> Result<Self, AppError> {
         let a = diesel::update(ticket_info::table)
             .filter(ticket_info::id.eq(ticket_id))
-            .set(ticket_info::approval_id.eq(approval_id))
+            // .set(ticket_info::approval_id.eq(approval_id))
+            .set(UpdateTicket {
+                last_approver_id: None,
+                amount: None,
+                state: None,
+                approval_id: Some(approval_id),
+                receiver_id: None,
+            })
             .get_result(conn)?;
         Ok(a)
     }
@@ -354,6 +404,7 @@ impl Ticket {
         conn: &mut PgConnection,
         ticket_id: i32,
         company_name: Option<String>,
+        cur_appover_id: i32,
     ) -> Result<Option<Self>, AppError> {
         let ticket = Self::get_by_id(conn, ticket_id)?;
         let cur_money_limit = if let Some(approval_id) = ticket.approval_id {
@@ -362,11 +413,26 @@ impl Ticket {
         } else {
             0
         };
+        if ticket.amount <= cur_money_limit {
+            // Self::update_approval_id(conn, ticket_id, None)?;
+            diesel::update(ticket_info::table)
+                .filter(ticket_info::id.eq(ticket_id))
+                .set(UpdateTicket {
+                    last_approver_id: Some(cur_appover_id),
+                    amount: None,
+                    state: None,
+                    approval_id: None,
+                    receiver_id: None,
+                })
+                .execute(conn)?;
+            return Ok(None);
+        }
         let new_approval = Approval::get_next_by_company(conn, company_name, cur_money_limit)?;
         if let Some(new_approval) = new_approval {
-            let a = Self::update_approval_id(conn, ticket_id, new_approval.id)?;
+            let a = Self::update_approval_id(conn, ticket_id, Some(new_approval.id))?;
             Ok(Some(a))
         } else {
+            Self::update_approval_id(conn, ticket_id, None)?;
             Ok(None)
         }
     }

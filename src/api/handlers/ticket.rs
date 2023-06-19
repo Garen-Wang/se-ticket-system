@@ -75,12 +75,20 @@ pub async fn get_history_tickets_by_page(
     let mut conn = app_state.conn()?;
     let employee = get_current_employee(&req, &mut conn)?;
     if let Some(approval_id) = employee.approval_id {
-        let count = Ticket::get_history_count(&mut conn, approval_id, employee.id)?;
+        let count = Ticket::get_history_count(
+            &mut conn,
+            approval_id,
+            employee.id,
+            form.id,
+            form.title.clone(),
+        )?;
         // let approval = Approval::get_by_id(&mut conn, approval_id)?;
         let tickets = Ticket::mget_history_by_approver(
             &mut conn,
             approval_id,
             employee.id,
+            form.id,
+            form.title.clone(),
             form.size,
             form.page,
         )?;
@@ -146,7 +154,16 @@ pub async fn create_ticket(
         let _ = TicketWithDepartments::create(&mut conn, ticket.id, department.id)?;
     }
     Ticket::update_amount(&mut conn, ticket.id, sum)?;
-    Ticket::update_next_current_approval_id(&mut conn, ticket.id, employee.company_name)?;
+    if Ticket::update_next_current_approval_id(
+        &mut conn,
+        ticket.id,
+        employee.company_name,
+        employee.id,
+    )?
+    .is_none()
+    {
+        Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_OPEN)?;
+    }
     let resp = CurrentTicketResponse::from((&mut conn, ticket));
     Ok(HttpResponse::Ok().json(resp))
 }

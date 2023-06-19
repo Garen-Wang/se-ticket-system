@@ -4,6 +4,9 @@ use serde::Deserialize;
 pub struct MGetTicketByPageRequest {
     pub size: i32, // # of items per page
     pub page: i32, // # of current page
+
+    pub id: Option<i32>,
+    pub title: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

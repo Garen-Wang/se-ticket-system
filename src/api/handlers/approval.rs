@@ -3,19 +3,18 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use crate::{
     api::{
         request::approval::{ApproveRejectTicketRequest, MGetApprovalLevelByCompanyRequest},
-        response::approval::{MGetApprovalLevelByCompanyResponse, MGetDepartmentBySystemResponse},
+        response::approval::MGetApprovalLevelByCompanyResponse,
     },
     error::{new_ok_error, AppError},
     models::{
         approval::{Approval, ApprovalWithTicket},
-        department::Department,
         ticket::Ticket,
     },
     utils::{
         auth::{get_current_employee, get_current_system},
         constant::{
-            APPROVE_RESULT_APPROVED, APPROVE_RESULT_REJECTED, TICKET_STATE_CLOSED,
-            TICKET_STATE_OPEN, TICKET_STATE_REJECTED,
+            APPROVE_RESULT_APPROVED, APPROVE_RESULT_REJECTED, TICKET_STATE_OPEN,
+            TICKET_STATE_REJECTED,
         },
         response::{new_ok_response, CommonResponse},
     },
@@ -42,6 +41,7 @@ pub async fn approve_ticket(
             &mut conn,
             form.ticket_id,
             employee.company_name,
+            employee.id,
         )?
         .is_none()
         {
@@ -93,20 +93,6 @@ pub async fn get_approval_levels_by_company(
     let approvals = Approval::mget_by_company(&mut conn, system.id, company_name)?;
     let resp = MGetApprovalLevelByCompanyResponse {
         approval_names: approvals.into_iter().map(|x| x.approval_name).collect(),
-    };
-    Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
-}
-
-// 找不到位置，乱放了
-pub async fn list_departments(
-    app_state: web::Data<AppState>,
-    req: HttpRequest,
-) -> Result<HttpResponse, AppError> {
-    let mut conn = app_state.conn()?;
-    let system = get_current_system(&req, &mut conn)?;
-    let departments = Department::mget_by_system(&mut conn, system.id)?;
-    let resp = MGetDepartmentBySystemResponse {
-        departments: departments.into_iter().map(|x| x.department_name).collect(),
     };
     Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
 }

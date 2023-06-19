@@ -40,7 +40,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
             .route("", web::get().to(ticket::get_ticket_by_id)),
     );
 
-    cfg.service(web::scope("/department").route("", web::get().to(approval::list_departments)));
+    cfg.service(web::scope("/department").route("", web::get().to(department::list_departments)));
     cfg.service(
         web::scope("/approval").route("", web::get().to(approval::get_approval_levels_by_company)),
     );
