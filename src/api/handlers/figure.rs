@@ -2,10 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use chrono::{Datelike, NaiveDateTime};
 
 use crate::{
-    api::{
-        request::figure::{GetChartDataRequest, GetPieChartDataRequest},
-        response::figure::{BarChartState, GetBarChartDataResponse},
-    },
+    api::{request::figure::GetPieChartDataRequest, response::figure::GetBarChartDataResponse},
     error::{new_ok_error, AppError},
     models::ticket::Ticket,
     utils::{auth::get_current_system, response::CommonResponse},
@@ -22,6 +19,7 @@ pub async fn get_pie_chart_data(
 
     let t = NaiveDateTime::parse_from_str(&format!("{} 23:59:59", form.date), "%Y-%m-%d %H:%M:%S");
     if t.is_err() {
+        // TODO: 日期兜底
         return Err(new_ok_error("日期不合法"));
     }
     let t = t.unwrap();
@@ -118,3 +116,11 @@ pub async fn get_bar_chart_data(
         _ => Err(new_ok_error("参数不合法")),
     }
 }
+
+// TODO: 表格
+// pub async fn get_approval_table(
+//     app_state: web::Data<AppState>,
+//     req: HttpRequest,
+//     form: web::Query<GetApprovalTableRequest>,
+// ) -> Result<HttpResponse, AppError> {
+// }

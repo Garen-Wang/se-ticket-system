@@ -47,7 +47,8 @@ pub struct TicketOverviewResponse {
     pub address: String,
     pub state: i16,
     pub funds: Vec<Fund>,
-    // TODO: ???
+    // TODO: 超时还没显示出来，2天超时
+    pub remaining: Option<String>,
 }
 
 impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
@@ -63,6 +64,7 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
             address: ticket.address,
             state: ticket.state,
             funds,
+            remaining: Some("1".to_owned()),
         }
     }
 }
