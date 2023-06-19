@@ -4,7 +4,7 @@ use chrono::{Datelike, NaiveDateTime};
 use crate::{
     api::{
         request::figure::{GetChartDataRequest, GetPieChartDataRequest},
-        response::figure::BarChartState,
+        response::figure::{BarChartState, GetBarChartDataResponse},
     },
     error::{new_ok_error, AppError},
     models::ticket::Ticket,
@@ -47,57 +47,72 @@ pub async fn get_pie_chart_data(
 }
 
 pub async fn get_bar_chart_data(
-    _app_state: web::Data<AppState>,
-    _req: HttpRequest,
-    form: web::Query<GetChartDataRequest>,
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<GetPieChartDataRequest>,
 ) -> Result<HttpResponse, AppError> {
-    // let mut conn = app_state.conn()?;
-    // let system = get_current_system(&req, &mut conn)?;
-    let a = 100;
-    let b = 200;
-    // TODO:
+    let mut conn = app_state.conn()?;
+    let system = get_current_system(&req, &mut conn)?;
+
+    let date = form.date.clone();
+    // let date = if form.date.len() > 0 {
+    //     form.date
+    // } else {
+    //     "haha".to_owned() // TODO: d d
+    // };
+
+    let _start_times = vec![
+        "0:00:00", "4:00:00", "8:00:00", "12:00:00", "16:00:00", "20:00:00",
+    ];
+    let end_times = vec![
+        "3:59:59", "7:59:59", "11:59:59", "15:59:59", "21:59:59", "23:59:59",
+    ];
+    let periods = vec![
+        "0:00-4:00",
+        "4:00-8:00",
+        "8:00-12:00",
+        "12:00-16:00",
+        "16:00-20:00",
+        "20:00-24:00",
+    ];
     match form.t.as_str() {
         "daily" => {
-            // get_daily_closed_ticket_count()
-            // get_daily_opening_ticket_count()
-            let weekday = chrono::Local::now().weekday();
-            let times = vec![
-                "0:00-4:00",
-                "4:00-8:00",
-                "8:00-12:00",
-                "12:00-16:00",
-                "16:00-20:00",
-                "20:00-24:00",
-            ];
-            let resp = {
-                let mut m = vec![];
-                for i in 0..6 {
-                    m.push(BarChartState {
-                        weekday: weekday as i32,
-                        period: Some(times[i].into()),
-                        open: a + (i as i32) * 100,
-                        closed: b + (i as i32) * 100,
-                    })
+            let mut resp: GetBarChartDataResponse = vec![];
+            for i in 0..6 {
+                let t = NaiveDateTime::parse_from_str(
+                    &format!("{} {}", date, end_times[i]),
+                    "%Y-%m-%d %H:%M:%S",
+                );
+                if t.is_err() {
+                    return Err(new_ok_error("日期不合法"));
                 }
-                m
-            };
+                let t = t.unwrap();
+                let state = Ticket::get_bar_chart_data(
+                    &mut conn,
+                    system.id,
+                    t,
+                    t.weekday() as i32,
+                    Some(periods[i].to_owned()),
+                )?;
+                resp.push(state);
+            }
             Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
         }
         "weekly" => {
-            let mut weekday = chrono::Local::now().weekday();
-            let mut m = vec![];
+            let mut now =
+                NaiveDateTime::parse_from_str(&format!("{} 23:59:59", date), "%Y-%m-%d %H:%M:%S")
+                    .unwrap();
+            let mut weekday = now.weekday();
+            let mut resp = vec![];
             for _ in 0..7 {
                 // get_closed_ticket_count_n_day_ago(i)
                 // get_open_ticket_count_n_day_ago(i)
-                m.push(BarChartState {
-                    weekday: weekday as i32,
-                    period: None,
-                    open: a,
-                    closed: b,
-                });
+                let state =
+                    Ticket::get_bar_chart_data(&mut conn, system.id, now, weekday as i32, None)?;
+                resp.push(state);
                 weekday = weekday.pred();
+                now = now - chrono::Duration::days(1);
             }
-            let resp = m;
             Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
         }
         _ => Err(new_ok_error("参数不合法")),

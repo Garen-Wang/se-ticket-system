@@ -1,5 +1,5 @@
 use crate::{
-    api::response::figure::{GetBarChartDataResponse, GetPieChartDataResponse},
+    api::response::figure::{BarChartState, GetBarChartDataResponse, GetPieChartDataResponse},
     error::new_ok_error,
     models::department::Department,
     schema::apply_dev_info,
@@ -530,13 +530,9 @@ impl Ticket {
         let mut received = 0;
         let mut closed = 0;
 
-        let tickets: Vec<Ticket> = FilterDsl::filter(
-            ticket_info::table,
-            ticket_info::system_id
-                .eq(system_id)
-                .and(ticket_info::created_time.ge(t)),
-        )
-        .get_results(conn)?;
+        let tickets: Vec<Ticket> =
+            FilterDsl::filter(ticket_info::table, ticket_info::system_id.eq(system_id))
+                .get_results(conn)?;
 
         for ticket in tickets.into_iter() {
             match ticket.get_state_at_moment(t)? {
@@ -570,12 +566,38 @@ impl Ticket {
         })
     }
 
-    pub fn get_daily_bar_chart_data(
+    pub fn get_bar_chart_data(
         conn: &mut PgConnection,
-        lower: NaiveDateTime,
-        upper: NaiveDateTime,
-    ) -> Result<GetBarChartDataResponse, AppError> {
-        unimplemented!()
+        system_id: i32,
+        t: NaiveDateTime,
+        weekday: i32,
+        period: Option<String>,
+    ) -> Result<BarChartState, AppError> {
+        let mut open = 0;
+        let mut closed = 0;
+        let tickets: Vec<Ticket> =
+            FilterDsl::filter(ticket_info::table, ticket_info::system_id.eq(system_id))
+                .get_results(conn)?;
+        for ticket in tickets.into_iter() {
+            match ticket.get_state_at_moment(t)? {
+                Some(TICKET_STATE_UNAPPROVED)
+                | Some(TICKET_STATE_APPROVING)
+                | Some(TICKET_STATE_OPEN)
+                | Some(TICKET_STATE_ASSIGNED) => {
+                    open += 1;
+                }
+                Some(TICKET_STATE_CLOSED) | Some(TICKET_STATE_REJECTED) => {
+                    closed += 1;
+                }
+                _ => {}
+            }
+        }
+        Ok(BarChartState {
+            weekday,
+            period,
+            open,
+            closed,
+        })
     }
 
     pub fn get_weekly_bar_chart_data(
@@ -586,15 +608,25 @@ impl Ticket {
             let now = chrono::Utc::now().naive_local();
             let t = now - chrono::Duration::days(days as i64);
 
-            let tickets: Vec<Ticket> = FilterDsl::filter(
-                ticket_info::table,
-                ticket_info::system_id
-                    .eq(system_id)
-                    .and(ticket_info::created_time.ge(t)),
-            )
-            .get_results(conn)?;
+            let mut open = 0;
+            let mut closed = 0;
+
+            let tickets: Vec<Ticket> =
+                FilterDsl::filter(ticket_info::table, ticket_info::system_id.eq(system_id))
+                    .get_results(conn)?;
             for ticket in tickets.into_iter() {
-                // ticket.get_state_at_moment(timestamp)
+                match ticket.get_state_at_moment(t)? {
+                    Some(TICKET_STATE_UNAPPROVED)
+                    | Some(TICKET_STATE_APPROVING)
+                    | Some(TICKET_STATE_OPEN)
+                    | Some(TICKET_STATE_ASSIGNED) => {
+                        open += 1;
+                    }
+                    Some(TICKET_STATE_CLOSED) | Some(TICKET_STATE_REJECTED) => {
+                        closed += 1;
+                    }
+                    _ => {}
+                }
             }
         }
         unimplemented!()

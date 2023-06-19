@@ -12,7 +12,7 @@ pub struct GetPieChartDataResponse {
 }
 
 // #[derive(Debug, Clone, Serialize)]
-pub type GetBarChartDataResponse = BTreeMap<i32, BarChartState>;
+pub type GetBarChartDataResponse = Vec<BarChartState>;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BarChartState {
