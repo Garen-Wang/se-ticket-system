@@ -1,48 +1,48 @@
 use actix_web::{web, HttpRequest, HttpResponse};
-use chrono::Datelike;
+use chrono::{Datelike, NaiveDateTime};
 
 use crate::{
     api::{
-        request::figure::GetChartDataRequest,
-        response::figure::{BarChartStateResponse, GetPieChartDataResponse},
+        request::figure::{GetChartDataRequest, GetPieChartDataRequest},
+        response::figure::BarChartState,
     },
     error::{new_ok_error, AppError},
-    utils::response::CommonResponse,
+    models::ticket::Ticket,
+    utils::{auth::get_current_system, response::CommonResponse},
     AppState,
 };
 
 pub async fn get_pie_chart_data(
-    _app_state: web::Data<AppState>,
-    _req: HttpRequest,
-    form: web::Query<GetChartDataRequest>,
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<GetPieChartDataRequest>,
 ) -> Result<HttpResponse, AppError> {
-    // let mut conn = app_state.conn()?;
-    // let system = get_current_system(&req, &mut conn)?;
-    // TODO:
-    match form.t.as_str() {
-        "daily" => {
-            // get_daily_closed_ticket_count()
-            // get_daily_opening_ticket_count()
-            let resp = GetPieChartDataResponse {
-                unapproved: 100,
-                approving: 200,
-                available: 250,
-                received: 10,
-                closed: 300,
-            };
-            Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
+    let mut conn = app_state.conn()?;
+    let system = get_current_system(&req, &mut conn)?;
+
+    let t = NaiveDateTime::parse_from_str(&format!("{} 23:59:59", form.date), "%Y-%m-%d %H:%M:%S");
+    if t.is_err() {
+        return Err(new_ok_error("日期不合法"));
+    }
+    let t = t.unwrap();
+
+    if form.t == "daily" {
+        let resp = Ticket::get_pie_chart_data(&mut conn, system.id, t)?;
+        Ok(HttpResponse::Ok().json(resp))
+    } else if form.t == "weekly" {
+        let mut resp = Ticket::get_pie_chart_data(&mut conn, system.id, t)?;
+        for i in 1..7 {
+            let temp =
+                Ticket::get_pie_chart_data(&mut conn, system.id, t - chrono::Duration::days(i))?;
+            resp.unapproved += temp.unapproved;
+            resp.approving += temp.approving;
+            resp.available += temp.available;
+            resp.received += temp.received;
+            resp.closed += temp.closed;
         }
-        "weekly" => {
-            let resp = GetPieChartDataResponse {
-                unapproved: 300,
-                approving: 100,
-                available: 50,
-                received: 10,
-                closed: 150,
-            };
-            Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
-        }
-        _ => Err(new_ok_error("参数不合法")),
+        Ok(HttpResponse::Ok().json(resp))
+    } else {
+        Err(new_ok_error("t 参数不合法"))
     }
 }
 
@@ -72,7 +72,7 @@ pub async fn get_bar_chart_data(
             let resp = {
                 let mut m = vec![];
                 for i in 0..6 {
-                    m.push(BarChartStateResponse {
+                    m.push(BarChartState {
                         weekday: weekday as i32,
                         period: Some(times[i].into()),
                         open: a + (i as i32) * 100,
@@ -89,7 +89,7 @@ pub async fn get_bar_chart_data(
             for _ in 0..7 {
                 // get_closed_ticket_count_n_day_ago(i)
                 // get_open_ticket_count_n_day_ago(i)
-                m.push(BarChartStateResponse {
+                m.push(BarChartState {
                     weekday: weekday as i32,
                     period: None,
                     open: a,

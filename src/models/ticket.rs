@@ -1,11 +1,11 @@
 use crate::{
-    api::response::figure::GetPieChartDataResponse,
+    api::response::figure::{GetBarChartDataResponse, GetPieChartDataResponse},
     error::new_ok_error,
     models::department::Department,
     schema::apply_dev_info,
     utils::constant::{
         TICKET_STATE_APPROVING, TICKET_STATE_ASSIGNED, TICKET_STATE_CLOSED, TICKET_STATE_OPEN,
-        TICKET_STATE_UNAPPROVED,
+        TICKET_STATE_REJECTED, TICKET_STATE_UNAPPROVED,
     },
 };
 use chrono::{Duration, NaiveDateTime};
@@ -522,33 +522,113 @@ impl Ticket {
     pub fn get_pie_chart_data(
         conn: &mut PgConnection,
         system_id: i32,
-        t: String,
+        t: NaiveDateTime,
     ) -> Result<GetPieChartDataResponse, AppError> {
-        // match t.as_str() {
-        //     "daily" => {
-        //         // 没有驳回
-        //         for i in 0..5 {
-        //             let now = chrono::Utc::now().naive_local();
-        //             let lower = now - chrono::Duration::days(1);
-        //             //
-        //             let a = ticket_info::table.filter(
-        //                 ticket_info::system_id.eq(system_id)
-        //                 .and(ticket_info::state.eq(i))
-        //                 .and(ticket_info::created_time.ge(lower))
-        //             )
-        //         }
-        //     }
-        //     "weekly" => {
+        let mut unapproved = 0;
+        let mut approving = 0;
+        let mut available = 0;
+        let mut received = 0;
+        let mut closed = 0;
 
-        //     }
-        //     _ => {
-        //         Err(new_ok_error("参数不合法"))
-        //     }
-        // }
+        let tickets: Vec<Ticket> = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::system_id
+                .eq(system_id)
+                .and(ticket_info::created_time.ge(t)),
+        )
+        .get_results(conn)?;
+
+        for ticket in tickets.into_iter() {
+            match ticket.get_state_at_moment(t)? {
+                Some(TICKET_STATE_UNAPPROVED) => {
+                    unapproved += 1;
+                }
+                Some(TICKET_STATE_APPROVING) => {
+                    approving += 1;
+                }
+                Some(TICKET_STATE_OPEN) => {
+                    available += 1;
+                }
+                Some(TICKET_STATE_ASSIGNED) => {
+                    received += 1;
+                }
+                Some(TICKET_STATE_CLOSED) => {
+                    closed += 1;
+                }
+                Some(TICKET_STATE_REJECTED) => {
+                    log::warn!("rejected");
+                }
+                _ => {}
+            }
+        }
+        Ok(GetPieChartDataResponse {
+            unapproved,
+            approving,
+            available,
+            received,
+            closed,
+        })
+    }
+
+    pub fn get_daily_bar_chart_data(
+        conn: &mut PgConnection,
+    ) -> Result<GetBarChartDataResponse, AppError> {
         unimplemented!()
     }
 
-    // pub fn get_
+    pub fn get_weekly_bar_chart_data(
+        conn: &mut PgConnection,
+        system_id: i32,
+    ) -> Result<GetBarChartDataResponse, AppError> {
+        for days in 0..7 {
+            let now = chrono::Utc::now().naive_local();
+            let t = now - chrono::Duration::days(days as i64);
+
+            let tickets: Vec<Ticket> = FilterDsl::filter(
+                ticket_info::table,
+                ticket_info::system_id
+                    .eq(system_id)
+                    .and(ticket_info::created_time.ge(t)),
+            )
+            .get_results(conn)?;
+            for ticket in tickets.into_iter() {
+                // ticket.get_state_at_moment(timestamp)
+            }
+        }
+        unimplemented!()
+    }
+}
+
+impl Ticket {
+    pub fn get_state_at_moment(&self, timestamp: NaiveDateTime) -> Result<Option<i16>, AppError> {
+        // TODO: 首先要判断是否已经被拒了
+        if timestamp < self.created_time {
+            Ok(None)
+        } else if self.approved_time.is_none() {
+            Ok(Some(TICKET_STATE_UNAPPROVED))
+        } else {
+            let approved_time = self.approved_time.unwrap();
+            if timestamp < approved_time {
+                Ok(Some(TICKET_STATE_APPROVING))
+            } else if self.received_time.is_none() {
+                Ok(Some(TICKET_STATE_OPEN))
+            } else {
+                let received_time = self.received_time.unwrap();
+                if timestamp < received_time {
+                    Ok(Some(TICKET_STATE_OPEN))
+                } else if self.finished_time.is_none() {
+                    Ok(Some(TICKET_STATE_ASSIGNED))
+                } else {
+                    let finished_time = self.finished_time.unwrap();
+                    if timestamp < finished_time {
+                        Ok(Some(TICKET_STATE_ASSIGNED))
+                    } else {
+                        Ok(Some(TICKET_STATE_CLOSED))
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, Selectable)]

@@ -12,10 +12,10 @@ pub struct GetPieChartDataResponse {
 }
 
 // #[derive(Debug, Clone, Serialize)]
-pub type GetBarChartDataResponse = BTreeMap<i32, BarChartStateResponse>;
+pub type GetBarChartDataResponse = BTreeMap<i32, BarChartState>;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct BarChartStateResponse {
+pub struct BarChartState {
     pub weekday: i32,
     pub period: Option<String>,
     pub open: i32,
