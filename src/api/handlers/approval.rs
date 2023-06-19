@@ -15,7 +15,7 @@ use crate::{
         auth::{get_current_employee, get_current_system},
         constant::{
             APPROVE_RESULT_APPROVED, APPROVE_RESULT_REJECTED, TICKET_STATE_CLOSED,
-            TICKET_STATE_OPEN,
+            TICKET_STATE_OPEN, TICKET_STATE_REJECTED,
         },
         response::{new_ok_response, CommonResponse},
     },
@@ -71,7 +71,7 @@ pub async fn reject_ticket(
             employee.id,
             APPROVE_RESULT_REJECTED,
         )?;
-        Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_CLOSED)?;
+        Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_REJECTED)?;
         Ok(HttpResponse::Ok().json(new_ok_response("已驳回")))
     } else {
         Err(new_ok_error("你不是审批人"))
