@@ -572,6 +572,8 @@ impl Ticket {
 
     pub fn get_daily_bar_chart_data(
         conn: &mut PgConnection,
+        lower: NaiveDateTime,
+        upper: NaiveDateTime,
     ) -> Result<GetBarChartDataResponse, AppError> {
         unimplemented!()
     }
