@@ -18,6 +18,22 @@ pub struct MGetOverviewByPageResponse {
     pub tickets: Vec<TicketOverviewResponse>,
 }
 
+impl TryFrom<(&mut AppConn, i64, Vec<Ticket>)> for MGetOverviewByPageResponse {
+    type Error = AppError;
+
+    fn try_from(
+        (conn, total, tickets): (&mut AppConn, i64, Vec<Ticket>),
+    ) -> Result<Self, Self::Error> {
+        let mut ts = vec![];
+        for ticket in tickets.into_iter() {
+            let employee = Employee::get_by_id(conn, ticket.creator_id)?;
+            let funds = Fund::mget_by_ticket_id(conn, ticket.id)?;
+            ts.push(TicketOverviewResponse::from((ticket, employee, funds)));
+        }
+        Ok(Self { total, tickets: ts })
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct TicketOverviewResponse {
     pub tid: i32,
@@ -29,6 +45,7 @@ pub struct TicketOverviewResponse {
     pub submitted_time: NaiveDateTime,
     pub reason: String,
     pub address: String,
+    pub state: i16,
     pub funds: Vec<Fund>,
 }
 
@@ -43,6 +60,7 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
             submitted_time: ticket.created_time,
             reason: ticket.reason,
             address: ticket.address,
+            state: ticket.state,
             funds,
         }
     }

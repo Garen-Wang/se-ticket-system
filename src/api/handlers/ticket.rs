@@ -32,6 +32,18 @@ use crate::{
     AppState,
 };
 
+pub async fn get_alarm_tickets_by_page(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<MGetTicketByPageRequest>,
+) -> Result<HttpResponse, AppError> {
+    let mut conn = app_state.conn()?;
+    let system = get_current_system(&req, &mut conn)?;
+    let count = Ticket::get_alarm_count(&mut conn, system.id)?;
+    let tickets = Ticket::mget_alarm_by_page(&mut conn, system.id, form.size, form.page)?;
+    unimplemented!()
+}
+
 pub async fn get_tickets_by_page(
     app_state: web::Data<AppState>,
     req: HttpRequest,
@@ -50,18 +62,8 @@ pub async fn get_tickets_by_page(
             form.page,
         )?;
 
-        let mut ts = vec![];
-        for ticket in tickets.into_iter() {
-            let employee = Employee::get_by_id(&mut conn, ticket.creator_id)?;
-            let funds = Fund::mget_by_ticket_id(&mut conn, ticket.id)?;
-            ts.push(TicketOverviewResponse::from((ticket, employee, funds)));
-        }
-        Ok(
-            HttpResponse::Ok().json(CommonResponse::from(MGetOverviewByPageResponse {
-                total: count,
-                tickets: ts,
-            })),
-        )
+        let resp = MGetOverviewByPageResponse::try_from((&mut conn, count, tickets))?;
+        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else {
         Err(new_ok_error("你不是审批人"))
     }
@@ -93,18 +95,8 @@ pub async fn get_history_tickets_by_page(
             form.page,
         )?;
 
-        let mut ts = vec![];
-        for ticket in tickets.into_iter() {
-            let employee = Employee::get_by_id(&mut conn, ticket.creator_id)?;
-            let funds = Fund::mget_by_ticket_id(&mut conn, ticket.id)?;
-            ts.push(TicketOverviewResponse::from((ticket, employee, funds)));
-        }
-        Ok(
-            HttpResponse::Ok().json(CommonResponse::from(MGetOverviewByPageResponse {
-                total: count,
-                tickets: ts,
-            })),
-        )
+        let resp = MGetOverviewByPageResponse::try_from((&mut conn, count, tickets))?;
+        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else {
         Err(new_ok_error("你不是审批人"))
     }
@@ -154,14 +146,12 @@ pub async fn create_ticket(
         let _ = TicketWithDepartments::create(&mut conn, ticket.id, department.id)?;
     }
     Ticket::update_amount(&mut conn, ticket.id, sum)?;
-    if Ticket::update_next_current_approval_id(
+    if !Ticket::update_next_current_approval_id(
         &mut conn,
         ticket.id,
         employee.company_name,
         employee.id,
-    )?
-    .is_none()
-    {
+    )? {
         Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_OPEN)?;
     }
     let resp = CurrentTicketResponse::from((&mut conn, ticket));

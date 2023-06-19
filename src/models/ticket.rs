@@ -7,7 +7,7 @@ use crate::{
         TICKET_STATE_UNAPPROVED,
     },
 };
-use chrono::NaiveDateTime;
+use chrono::{Duration, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::query_dsl::methods::FilterDsl;
 use serde::{Deserialize, Serialize};
@@ -212,6 +212,43 @@ impl Ticket {
         Ok(tickets)
     }
 
+    pub fn get_alarm_count(conn: &mut PgConnection, system_id: i32) -> Result<i64, AppError> {
+        let now = chrono::Utc::now().naive_local();
+        let expired_datetime = now - Duration::days(3);
+        // let warning_datetime = now - Duration::days(2);
+        let a = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::system_id
+                .eq(system_id)
+                .and(ticket_info::created_time.le(expired_datetime))
+                .and(ticket_info::state.le(TICKET_STATE_ASSIGNED)),
+        )
+        .count()
+        .get_result(conn)?;
+        Ok(a)
+    }
+
+    pub fn mget_alarm_by_page(
+        conn: &mut PgConnection,
+        system_id: i32,
+        size: i32,
+        page: i32,
+    ) -> Result<Vec<Self>, AppError> {
+        let now = chrono::Utc::now().naive_local();
+        let expired_datetime = now - Duration::days(3);
+        let tickets = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::system_id
+                .eq(system_id)
+                .and(ticket_info::created_time.le(expired_datetime))
+                .and(ticket_info::state.le(TICKET_STATE_ASSIGNED)),
+        )
+        .limit(size as i64)
+        .offset(((page - 1) * size) as i64)
+        .get_results(conn)?;
+        Ok(tickets)
+    }
+
     pub fn get_by_id(conn: &mut PgConnection, id: i32) -> Result<Self, AppError> {
         let ticket = ticket_info::table.find(id).first(conn)?;
         Ok(ticket)
@@ -405,7 +442,7 @@ impl Ticket {
         ticket_id: i32,
         company_name: Option<String>,
         cur_appover_id: i32,
-    ) -> Result<Option<Self>, AppError> {
+    ) -> Result<bool, AppError> {
         let ticket = Self::get_by_id(conn, ticket_id)?;
         let cur_money_limit = if let Some(approval_id) = ticket.approval_id {
             let approval = Approval::get_by_id(conn, approval_id)?;
@@ -425,15 +462,21 @@ impl Ticket {
                     receiver_id: None,
                 })
                 .execute(conn)?;
-            return Ok(None);
-        }
-        let new_approval = Approval::get_next_by_company(conn, company_name, cur_money_limit)?;
-        if let Some(new_approval) = new_approval {
-            let a = Self::update_approval_id(conn, ticket_id, Some(new_approval.id))?;
-            Ok(Some(a))
+            Ok(false)
         } else {
-            Self::update_approval_id(conn, ticket_id, None)?;
-            Ok(None)
+            let new_approval = Approval::get_next_by_company(conn, company_name, cur_money_limit)?;
+            let ret = new_approval.is_some();
+            diesel::update(ticket_info::table)
+                .filter(ticket_info::id.eq(ticket_id))
+                .set(UpdateTicket {
+                    last_approver_id: Some(cur_appover_id),
+                    amount: None,
+                    state: None,
+                    approval_id: Some(new_approval.map(|x| x.id)),
+                    receiver_id: None,
+                })
+                .execute(conn)?;
+            Ok(ret)
         }
     }
 }

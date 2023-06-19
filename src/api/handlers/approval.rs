@@ -37,14 +37,12 @@ pub async fn approve_ticket(
             employee.id,
             APPROVE_RESULT_APPROVED,
         )?;
-        if Ticket::update_next_current_approval_id(
+        if !Ticket::update_next_current_approval_id(
             &mut conn,
             form.ticket_id,
             employee.company_name,
             employee.id,
-        )?
-        .is_none()
-        {
+        )? {
             // 如果能找到下一个审批的人，就还是审批状态
             // 如果没有，就通过
             Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_OPEN)?;
