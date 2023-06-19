@@ -43,12 +43,9 @@ pub async fn save_file(mut payload: Multipart) -> Result<HttpResponse, AppError>
 
 pub async fn save_file_v2(form: web::Json<UploadFileV2Request>) -> Result<HttpResponse, AppError> {
     let file_path = format!("static/{}", form.name);
-    let content = base64::engine::GeneralPurpose::new(
-        &base64::alphabet::URL_SAFE,
-        base64::engine::general_purpose::NO_PAD,
-    )
-    .decode(&form.file)
-    .unwrap();
+    let content = base64::engine::general_purpose::STANDARD
+        .decode(&form.file)
+        .unwrap();
 
     let mut f = web::block(|| std::fs::File::create(file_path))
         .await

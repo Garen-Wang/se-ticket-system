@@ -41,8 +41,8 @@ pub async fn get_alarm_tickets_by_page(
     let system = get_current_system(&req, &mut conn)?;
     let count = Ticket::get_alarm_count(&mut conn, system.id)?;
     let tickets = Ticket::mget_alarm_by_page(&mut conn, system.id, form.size, form.page)?;
-
-    unimplemented!()
+    let resp = MGetOverviewByPageResponse::try_from((&mut conn, count, tickets))?;
+    Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
 }
 
 pub async fn get_tickets_by_page(

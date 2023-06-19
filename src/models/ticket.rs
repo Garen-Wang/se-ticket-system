@@ -1,4 +1,5 @@
 use crate::{
+    api::response::figure::GetPieChartDataResponse,
     error::new_ok_error,
     models::department::Department,
     schema::apply_dev_info,
@@ -479,6 +480,37 @@ impl Ticket {
             Ok(ret)
         }
     }
+
+    pub fn get_pie_chart_data(
+        conn: &mut PgConnection,
+        system_id: i32,
+        t: String,
+    ) -> Result<GetPieChartDataResponse, AppError> {
+        // match t.as_str() {
+        //     "daily" => {
+        //         // 没有驳回
+        //         for i in 0..5 {
+        //             let now = chrono::Utc::now().naive_local();
+        //             let lower = now - chrono::Duration::days(1);
+        //             //
+        //             let a = ticket_info::table.filter(
+        //                 ticket_info::system_id.eq(system_id)
+        //                 .and(ticket_info::state.eq(i))
+        //                 .and(ticket_info::created_time.ge(lower))
+        //             )
+        //         }
+        //     }
+        //     "weekly" => {
+
+        //     }
+        //     _ => {
+        //         Err(new_ok_error("参数不合法"))
+        //     }
+        // }
+        unimplemented!()
+    }
+
+    // pub fn get_
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, Selectable)]
