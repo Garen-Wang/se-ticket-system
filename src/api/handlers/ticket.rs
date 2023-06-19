@@ -121,7 +121,7 @@ pub async fn create_ticket(
         amount: 0,
         reason: &form.reason,
         address: &form.address,
-        image: form.image_url.as_ref().map(|x| x.as_str()),
+        image: form.image.as_ref().map(|x| x.as_str()),
         system_id: system.id,
         created_time: Utc::now().naive_utc(),
         updated_time: Utc::now().naive_utc(),

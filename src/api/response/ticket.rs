@@ -8,7 +8,7 @@ use crate::{
         employee::Employee,
         ticket::{Fund, Ticket, TicketWithDepartments},
     },
-    utils::{constant::TEST_IMAGE_PATH, date_format},
+    utils::date_format,
     AppConn,
 };
 
@@ -191,9 +191,9 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 submitted_time: t.created_time,
                 submitter_ass: None,
                 phone_number_ass: None,
-                image_path: Some(TEST_IMAGE_PATH.into()), // TODO:
+                image_path: t.image,
                 participants: Ticket::mget_participant(conn, t.id, false).unwrap(),
-                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()],
+                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()], // TODO:
             });
         }
         for (t, ass) in ass_main_tickets.into_iter().zip(ass_tickets.into_iter()) {
@@ -212,9 +212,9 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 submitted_time: t.created_time,
                 submitter_ass: Some(submitter.name),
                 phone_number_ass: Some(submitter.phone.trim().to_string()),
-                image_path: Some(TEST_IMAGE_PATH.into()), // TODO:
+                image_path: t.image,
                 participants: Ticket::mget_participant(conn, t.id, true).unwrap(),
-                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()],
+                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()], // TODO:
             });
         }
         Self { tickets: ret }
@@ -264,7 +264,7 @@ impl TryFrom<(&mut AppConn, Ticket)> for PCTicketResponse {
                 .map(|x| format!("{}: {}", x.reason, x.amount))
                 .collect::<Vec<String>>()
                 .join(";"),
-            image_path: Some(TEST_IMAGE_PATH.into()), // FIXME:
+            image_path: t.image,
         })
     }
 }
