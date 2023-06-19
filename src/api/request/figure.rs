@@ -10,3 +10,8 @@ pub struct GetPieChartDataRequest {
 pub struct GetChartDataRequest {
     pub t: String,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetTableRequest {
+    pub date: String,
+}

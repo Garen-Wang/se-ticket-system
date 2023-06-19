@@ -2,10 +2,16 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use chrono::{Datelike, NaiveDateTime};
 
 use crate::{
-    api::{request::figure::GetPieChartDataRequest, response::figure::GetBarChartDataResponse},
+    api::{
+        request::figure::{GetPieChartDataRequest, GetTableRequest},
+        response::figure::GetBarChartDataResponse,
+    },
     error::{new_ok_error, AppError},
-    models::ticket::Ticket,
-    utils::{auth::get_current_system, response::CommonResponse},
+    models::{approval::Approval, ticket::Ticket},
+    utils::{
+        auth::{get_current_employee, get_current_system},
+        response::CommonResponse,
+    },
     AppState,
 };
 
@@ -118,9 +124,30 @@ pub async fn get_bar_chart_data(
 }
 
 // TODO: 表格
-// pub async fn get_approval_table(
-//     app_state: web::Data<AppState>,
-//     req: HttpRequest,
-//     form: web::Query<GetApprovalTableRequest>,
-// ) -> Result<HttpResponse, AppError> {
-// }
+pub async fn get_table(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+    form: web::Query<GetTableRequest>,
+) -> Result<HttpResponse, AppError> {
+    let date = form.date.clone();
+    let mut conn = app_state.conn()?;
+    let system = get_current_system(&req, &mut conn)?;
+    let employee = get_current_employee(&req, &mut conn)?;
+    if let Some(approval_id) = employee.approval_id {
+        let mut approvals = Approval::mget_by_company(&mut conn, system.id, employee.company_name)?;
+        approvals.sort_by(|a, b| a.amount.cmp(&b.amount));
+        let mut ranges = vec![0];
+        for approval in approvals.into_iter() {
+            ranges.push(approval.amount);
+        }
+        let t = NaiveDateTime::parse_from_str(&format!("{} 23:59:59", date), "%Y-%m-%d %H:%M:%S");
+        if t.is_err() {
+            return Err(new_ok_error("日期不合法"));
+        }
+        let t = t.unwrap();
+        let resp = Ticket::get_table_by_date(&mut conn, system.id, ranges, t)?;
+        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
+    } else {
+        Err(new_ok_error("权限不够"))
+    }
+}

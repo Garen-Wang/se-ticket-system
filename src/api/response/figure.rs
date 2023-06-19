@@ -21,3 +21,12 @@ pub struct BarChartState {
     pub open: i32,
     pub closed: i32,
 }
+
+pub type GetTableResponse = Vec<TableState>;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TableState {
+    pub range: String,
+    pub open: i32,
+    pub closed: i32,
+}

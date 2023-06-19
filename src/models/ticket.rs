@@ -1,5 +1,8 @@
 use crate::{
-    api::response::figure::{BarChartState, GetBarChartDataResponse, GetPieChartDataResponse},
+    api::response::figure::{
+        BarChartState, GetBarChartDataResponse, GetPieChartDataResponse, GetTableResponse,
+        TableState,
+    },
     error::new_ok_error,
     models::department::Department,
     schema::apply_dev_info,
@@ -8,7 +11,7 @@ use crate::{
         TICKET_STATE_REJECTED, TICKET_STATE_UNAPPROVED,
     },
 };
-use chrono::{Duration, NaiveDateTime};
+use chrono::{Datelike, Duration, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::query_dsl::methods::FilterDsl;
 use serde::{Deserialize, Serialize};
@@ -600,20 +603,24 @@ impl Ticket {
         })
     }
 
-    pub fn get_weekly_bar_chart_data(
+    pub fn get_table_by_date(
         conn: &mut PgConnection,
         system_id: i32,
-    ) -> Result<GetBarChartDataResponse, AppError> {
-        for days in 0..7 {
-            let now = chrono::Utc::now().naive_local();
-            let t = now - chrono::Duration::days(days as i64);
-
+        ranges: Vec<i32>, // 审批钱数
+        t: NaiveDateTime, // 时间
+    ) -> Result<GetTableResponse, AppError> {
+        let mut resp = vec![];
+        for i in 0..(ranges.len() - 1) {
+            let range = format!("{}-{}", ranges[i], ranges[i + 1]);
+            let tickets: Vec<Ticket> = FilterDsl::filter(
+                ticket_info::table,
+                ticket_info::system_id
+                    .eq(system_id)
+                    .and(ticket_info::amount.between(ranges[i], ranges[i + 1])),
+            )
+            .get_results(conn)?;
             let mut open = 0;
             let mut closed = 0;
-
-            let tickets: Vec<Ticket> =
-                FilterDsl::filter(ticket_info::table, ticket_info::system_id.eq(system_id))
-                    .get_results(conn)?;
             for ticket in tickets.into_iter() {
                 match ticket.get_state_at_moment(t)? {
                     Some(TICKET_STATE_UNAPPROVED)
@@ -628,8 +635,13 @@ impl Ticket {
                     _ => {}
                 }
             }
+            resp.push(TableState {
+                range,
+                open,
+                closed,
+            });
         }
-        unimplemented!()
+        Ok(resp)
     }
 }
 

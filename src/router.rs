@@ -52,7 +52,8 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/figure")
             .route("pie", web::get().to(figure::get_pie_chart_data))
-            .route("bar", web::get().to(figure::get_bar_chart_data)),
+            .route("bar", web::get().to(figure::get_bar_chart_data))
+            .route("table", web::get().to(figure::get_table)),
     );
 
     cfg.service(
