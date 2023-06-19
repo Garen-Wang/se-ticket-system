@@ -79,6 +79,7 @@ pub struct CurrentTicketResponse {
     pub departments: Vec<String>,
     pub state: i16,
     pub manager_id: Option<i32>,
+    pub image: Option<String>,
 }
 
 impl From<(&mut AppConn, Ticket)> for CurrentTicketResponse {
@@ -98,6 +99,7 @@ impl From<(&mut AppConn, Ticket)> for CurrentTicketResponse {
             departments,
             state: ticket.state,
             manager_id: None,
+            image: ticket.image,
         }
     }
 }
@@ -120,6 +122,7 @@ impl From<(&mut AppConn, Ticket, Assist)> for CurrentTicketResponse {
             departments,
             state: ticket.state,
             manager_id: Some(assist.submitter_id),
+            image: ticket.image,
         }
     }
 }
