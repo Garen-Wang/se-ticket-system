@@ -41,6 +41,7 @@ pub async fn get_alarm_tickets_by_page(
     let system = get_current_system(&req, &mut conn)?;
     let count = Ticket::get_alarm_count(&mut conn, system.id)?;
     let tickets = Ticket::mget_alarm_by_page(&mut conn, system.id, form.size, form.page)?;
+
     unimplemented!()
 }
 
@@ -75,21 +76,21 @@ pub async fn get_history_tickets_by_page(
     form: web::Query<MGetTicketByPageRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
+    let id = form
+        .id
+        .as_ref()
+        .filter(|x| x.len() > 0)
+        .map(|x| x.parse::<i32>().unwrap());
     let employee = get_current_employee(&req, &mut conn)?;
     if let Some(approval_id) = employee.approval_id {
-        let count = Ticket::get_history_count(
-            &mut conn,
-            approval_id,
-            employee.id,
-            form.id,
-            form.title.clone(),
-        )?;
+        let count =
+            Ticket::get_history_count(&mut conn, approval_id, employee.id, id, form.title.clone())?;
         // let approval = Approval::get_by_id(&mut conn, approval_id)?;
         let tickets = Ticket::mget_history_by_approver(
             &mut conn,
             approval_id,
             employee.id,
-            form.id,
+            id,
             form.title.clone(),
             form.size,
             form.page,

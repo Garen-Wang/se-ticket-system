@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{Duration, NaiveDateTime};
 use serde::Serialize;
 
 use crate::{
@@ -47,6 +47,7 @@ pub struct TicketOverviewResponse {
     pub address: String,
     pub state: i16,
     pub funds: Vec<Fund>,
+    // TODO: remaining time
 }
 
 impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
