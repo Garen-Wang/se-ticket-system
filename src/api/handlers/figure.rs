@@ -28,7 +28,7 @@ pub async fn get_pie_chart_data(
 
     if form.t == "daily" {
         let resp = Ticket::get_pie_chart_data(&mut conn, system.id, t)?;
-        Ok(HttpResponse::Ok().json(resp))
+        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else if form.t == "weekly" {
         let mut resp = Ticket::get_pie_chart_data(&mut conn, system.id, t)?;
         for i in 1..7 {
@@ -40,7 +40,7 @@ pub async fn get_pie_chart_data(
             resp.received += temp.received;
             resp.closed += temp.closed;
         }
-        Ok(HttpResponse::Ok().json(resp))
+        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else {
         Err(new_ok_error("t 参数不合法"))
     }
