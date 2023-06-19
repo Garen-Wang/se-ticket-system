@@ -1,5 +1,4 @@
 use actix_web::{web, HttpRequest, HttpResponse};
-use diesel::query_source::AppearsInFromClause;
 use passwords::PasswordGenerator;
 
 use crate::{
@@ -17,9 +16,7 @@ use crate::{
     },
     utils::{
         auth::{get_current_system, is_super_admin, is_system_admin},
-        constant::{
-            ACCOUNT_TYPE_ADMIN, APPROVAL_ID_ADMIN, EMPLOYEE_STATUS_AVAILABLE, SEX_FEMALE, SEX_MALE,
-        },
+        constant::{ACCOUNT_TYPE_ADMIN, SEX_FEMALE, SEX_MALE},
         response::CommonResponse,
     },
     AppState,
@@ -46,6 +43,7 @@ pub async fn create_system(
                 approval_id: None,
                 system_id: system.id,
                 sex: SEX_MALE,
+                company_name: None,
             },
         )?;
         let pg = PasswordGenerator {
@@ -148,6 +146,11 @@ pub async fn create_employee(
             approval_id,
             system_id: system.id,
             sex,
+            company_name: if form.company.len() > 0 {
+                Some(form.company.as_str())
+            } else {
+                None
+            },
         },
     )?;
     let (account, _) = Account::register(

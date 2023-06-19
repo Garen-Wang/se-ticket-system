@@ -15,6 +15,7 @@ pub struct Employee {
     pub approval_id: Option<i32>,
     pub system_id: i32,
     pub sex: i16,
+    pub company_name: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -27,6 +28,7 @@ pub struct InsertEmployee<'a> {
     pub approval_id: Option<i32>,
     pub system_id: i32,
     pub sex: i16,
+    pub company_name: Option<&'a str>,
 }
 
 impl Employee {

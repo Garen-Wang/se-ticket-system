@@ -6,23 +6,21 @@ use crate::{
         response::approval::{MGetApprovalLevelByCompanyResponse, MGetDepartmentBySystemResponse},
     },
     error::{new_ok_error, AppError},
-    models::{approval::Approval, department::Department, ticket::Ticket},
+    models::{
+        approval::{Approval, ApprovalWithTicket},
+        department::Department,
+        ticket::Ticket,
+    },
     utils::{
         auth::{get_current_employee, get_current_system},
-        constant::{TICKET_STATE_CLOSED, TICKET_STATE_OPEN},
+        constant::{
+            APPROVE_RESULT_APPROVED, APPROVE_RESULT_REJECTED, TICKET_STATE_CLOSED,
+            TICKET_STATE_OPEN,
+        },
         response::{new_ok_response, CommonResponse},
     },
     AppState,
 };
-
-// 列出所有要审批的工单
-pub async fn list_approving_tickets(
-    app_state: web::Data<AppState>,
-    req: HttpRequest,
-) -> Result<HttpResponse, AppError> {
-    Ok(HttpResponse::Ok().json(new_ok_response("哈哈")))
-    // Ticket::mget_approving_ticket_by_employee_id
-}
 
 // 审批一个工单
 pub async fn approve_ticket(
@@ -31,13 +29,30 @@ pub async fn approve_ticket(
     form: web::Query<ApproveRejectTicketRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
-    // let employee = get_current_employee(&req, &mut conn)?;
-    // if employee.approval_id.is_none() {
-    //     Err(new_ok_error("你不是审批人"))
-    // } else {
-    Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_OPEN)?;
-    Ok(HttpResponse::Ok().json(new_ok_response("已通过")))
-    // }
+    let employee = get_current_employee(&req, &mut conn)?;
+    if let Some(approval_id) = employee.approval_id {
+        ApprovalWithTicket::create(
+            &mut conn,
+            form.ticket_id,
+            approval_id,
+            employee.id,
+            APPROVE_RESULT_APPROVED,
+        )?;
+        if Ticket::update_next_current_approval_id(
+            &mut conn,
+            form.ticket_id,
+            employee.company_name,
+        )?
+        .is_none()
+        {
+            // 如果能找到下一个审批的人，就还是审批状态
+            // 如果没有，就通过
+            Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_OPEN)?;
+        }
+        Ok(HttpResponse::Ok().json(new_ok_response("已通过")))
+    } else {
+        Err(new_ok_error("你不是审批人"))
+    }
 }
 
 // 拒绝一个工单
@@ -47,13 +62,20 @@ pub async fn reject_ticket(
     form: web::Query<ApproveRejectTicketRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
-    // let employee = get_current_employee(&req, &mut conn)?;
-    // if employee.approval_id.is_none() {
-    //     Err(new_ok_error("你不是审批人"))
-    // } else {
-    Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_CLOSED)?;
-    Ok(HttpResponse::Ok().json(new_ok_response("已驳回")))
-    // }
+    let employee = get_current_employee(&req, &mut conn)?;
+    if let Some(approval_id) = employee.approval_id {
+        ApprovalWithTicket::create(
+            &mut conn,
+            form.ticket_id,
+            approval_id,
+            employee.id,
+            APPROVE_RESULT_REJECTED,
+        )?;
+        Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_CLOSED)?;
+        Ok(HttpResponse::Ok().json(new_ok_response("已驳回")))
+    } else {
+        Err(new_ok_error("你不是审批人"))
+    }
 }
 
 pub async fn get_approval_levels_by_company(
@@ -63,12 +85,12 @@ pub async fn get_approval_levels_by_company(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let system = get_current_system(&req, &mut conn)?;
-    let company_name = &form.company;
-    let mut approvals = Approval::mget_by_company(&mut conn, system.id, company_name)?;
-    if approvals.len() > 0 {
+    let company_name = if form.company.len() > 0 {
+        Some(form.company.clone())
     } else {
-        approvals = Approval::mget_default(&mut conn, system.id)?;
-    }
+        None
+    };
+    let approvals = Approval::mget_by_company(&mut conn, system.id, company_name)?;
     let resp = MGetApprovalLevelByCompanyResponse {
         approval_names: approvals.into_iter().map(|x| x.approval_name).collect(),
     };

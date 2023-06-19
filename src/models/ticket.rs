@@ -17,10 +17,7 @@ use crate::{
     schema::{approved_info, fund_list, ticket_info},
 };
 
-use super::{
-    assist::{AssistWithDepartments, AssistWithEmployees},
-    employee::Employee,
-};
+use super::{approval::Approval, assist::AssistWithEmployees, employee::Employee};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Identifiable, Selectable)]
 #[diesel(table_name = ticket_info)]
@@ -37,7 +34,6 @@ pub struct Ticket {
     pub address: String,
     pub created_time: NaiveDateTime,
     pub updated_time: NaiveDateTime,
-    pub expired_type: i16,
     pub system_id: i32,
     pub receiver_id: Option<i32>,
 }
@@ -66,7 +62,6 @@ pub struct UpdateTicket {
     pub state: Option<i16>,
     pub image: Option<String>,
     pub address: Option<String>,
-    pub expired_type: Option<i16>,
 }
 
 // static methods
@@ -101,6 +96,22 @@ impl Ticket {
         Ok(target)
     }
 
+    pub fn get_approving_count(
+        conn: &mut PgConnection,
+        system_id: i32,
+        approval_id: i32,
+    ) -> Result<i64, AppError> {
+        let target = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::system_id
+                .eq(system_id)
+                .and(ticket_info::approval_id.eq(approval_id)),
+        )
+        .count()
+        .get_result(conn)?;
+        Ok(target)
+    }
+
     // TODO: 有问题，包含了历史审批
     pub fn mget_by_page(
         conn: &mut PgConnection,
@@ -115,14 +126,35 @@ impl Ticket {
         Ok(tickets)
     }
 
-    pub fn get_history_count(
+    pub fn mget_approving_by_page(
         conn: &mut PgConnection,
         system_id: i32,
         approval_id: i32,
+        size: i32,
+        page: i32,
+    ) -> Result<Vec<Ticket>, AppError> {
+        let tickets = FilterDsl::filter(
+            ticket_info::table,
+            ticket_info::system_id
+                .eq(system_id)
+                .and(ticket_info::approval_id.eq(approval_id)),
+        )
+        .limit(size as i64)
+        .offset(((page - 1) * size) as i64)
+        .get_results(conn)?;
+        Ok(tickets)
+    }
+
+    pub fn get_history_count(
+        conn: &mut PgConnection,
+        approval_id: i32,
+        employee_id: i32,
     ) -> Result<i64, AppError> {
         let a = FilterDsl::filter(
             approved_info::table,
-            approved_info::approval_id.eq(approval_id),
+            approved_info::approval_id
+                .eq(approval_id)
+                .and(approved_info::employee_id.eq(employee_id)),
         )
         .select(approved_info::ticket_id)
         .count()
@@ -131,15 +163,18 @@ impl Ticket {
     }
 
     // 我审批过的工单
-    pub fn mget_ticket_by_approval_id(
+    pub fn mget_history_by_approver(
         conn: &mut PgConnection,
         approval_id: i32,
+        employee_id: i32,
         size: i32,
         page: i32,
     ) -> Result<Vec<Ticket>, AppError> {
         let a: Vec<i32> = FilterDsl::filter(
             approved_info::table,
-            approved_info::approval_id.eq(approval_id),
+            approved_info::approval_id
+                .eq(approval_id)
+                .and(approved_info::employee_id.eq(employee_id)),
         )
         .select(approved_info::ticket_id)
         .limit(size as i64)
@@ -299,6 +334,39 @@ impl Ticket {
         )
         .get_results(conn)?;
         Ok(assists)
+    }
+
+    pub fn update_approval_id(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        approval_id: i32,
+    ) -> Result<Self, AppError> {
+        let a = diesel::update(ticket_info::table)
+            .filter(ticket_info::id.eq(ticket_id))
+            .set(ticket_info::approval_id.eq(approval_id))
+            .get_result(conn)?;
+        Ok(a)
+    }
+
+    pub fn update_next_current_approval_id(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        company_name: Option<String>,
+    ) -> Result<Option<Self>, AppError> {
+        let ticket = Self::get_by_id(conn, ticket_id)?;
+        let cur_money_limit = if let Some(approval_id) = ticket.approval_id {
+            let approval = Approval::get_by_id(conn, approval_id)?;
+            approval.amount
+        } else {
+            0
+        };
+        let new_approval = Approval::get_next_by_company(conn, company_name, cur_money_limit)?;
+        if let Some(new_approval) = new_approval {
+            let a = Self::update_approval_id(conn, ticket_id, new_approval.id)?;
+            Ok(Some(a))
+        } else {
+            Ok(None)
+        }
     }
 }
 

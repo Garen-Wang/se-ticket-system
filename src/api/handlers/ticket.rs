@@ -16,13 +16,11 @@ use crate::{
     },
     error::{new_ok_error, AppError},
     models::{
-        approval::{Approval, ApprovalWithTicket},
         assist::{Assist, AssistWithDepartments, AssistWithEmployees, InsertAssist},
         department::{Department, EmployeeWithDepartments},
         employee::Employee,
         ticket::{Fund, InsertFund, InsertTicket, Ticket, TicketWithDepartments},
     },
-    schema::approved_info,
     utils::{
         auth::{get_current_employee, get_current_system, is_super_admin},
         constant::{
@@ -41,21 +39,32 @@ pub async fn get_tickets_by_page(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let system = get_current_system(&req, &mut conn)?;
-    let count = Ticket::get_count(&mut conn, system.id)?;
-    let tickets = Ticket::mget_by_page(&mut conn, system.id, form.size, form.page)?;
+    let employee = get_current_employee(&req, &mut conn)?;
+    if let Some(approval_id) = employee.approval_id {
+        let count = Ticket::get_approving_count(&mut conn, system.id, approval_id)?;
+        let tickets = Ticket::mget_approving_by_page(
+            &mut conn,
+            system.id,
+            approval_id,
+            form.size,
+            form.page,
+        )?;
 
-    let mut ts = vec![];
-    for ticket in tickets.into_iter() {
-        let employee = Employee::get_by_id(&mut conn, ticket.creator_id)?;
-        let funds = Fund::mget_by_ticket_id(&mut conn, ticket.id)?;
-        ts.push(TicketOverviewResponse::from((ticket, employee, funds)));
+        let mut ts = vec![];
+        for ticket in tickets.into_iter() {
+            let employee = Employee::get_by_id(&mut conn, ticket.creator_id)?;
+            let funds = Fund::mget_by_ticket_id(&mut conn, ticket.id)?;
+            ts.push(TicketOverviewResponse::from((ticket, employee, funds)));
+        }
+        Ok(
+            HttpResponse::Ok().json(CommonResponse::from(MGetOverviewByPageResponse {
+                total: count,
+                tickets: ts,
+            })),
+        )
+    } else {
+        Err(new_ok_error("你不是审批人"))
     }
-    Ok(
-        HttpResponse::Ok().json(CommonResponse::from(MGetOverviewByPageResponse {
-            total: count,
-            tickets: ts,
-        })),
-    )
 }
 
 pub async fn get_history_tickets_by_page(
@@ -65,12 +74,16 @@ pub async fn get_history_tickets_by_page(
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
     let employee = get_current_employee(&req, &mut conn)?;
-    let system = get_current_system(&req, &mut conn)?;
     if let Some(approval_id) = employee.approval_id {
-        let count = Ticket::get_history_count(&mut conn, system.id, approval_id)?;
+        let count = Ticket::get_history_count(&mut conn, approval_id, employee.id)?;
         // let approval = Approval::get_by_id(&mut conn, approval_id)?;
-        let tickets =
-            Ticket::mget_ticket_by_approval_id(&mut conn, approval_id, form.size, form.page)?;
+        let tickets = Ticket::mget_history_by_approver(
+            &mut conn,
+            approval_id,
+            employee.id,
+            form.size,
+            form.page,
+        )?;
 
         let mut ts = vec![];
         for ticket in tickets.into_iter() {
@@ -108,7 +121,7 @@ pub async fn create_ticket(
         amount: 0,
         reason: &form.reason,
         address: &form.address,
-        image: None, // TODO: 插入图片
+        image: form.image_url.as_ref().map(|x| x.as_str()),
         system_id: system.id,
         created_time: Utc::now().naive_utc(),
         updated_time: Utc::now().naive_utc(),
@@ -133,6 +146,7 @@ pub async fn create_ticket(
         let _ = TicketWithDepartments::create(&mut conn, ticket.id, department.id)?;
     }
     Ticket::update_amount(&mut conn, ticket.id, sum)?;
+    Ticket::update_next_current_approval_id(&mut conn, ticket.id, employee.company_name)?;
     let resp = CurrentTicketResponse::from((&mut conn, ticket));
     Ok(HttpResponse::Ok().json(resp))
 }

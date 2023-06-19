@@ -13,6 +13,7 @@ pub struct CreateTicketRequest {
     pub reason: String,
     pub funds: Vec<TicketFundRequest>,
     pub departments: Vec<String>,
+    pub image_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

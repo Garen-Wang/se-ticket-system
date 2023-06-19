@@ -8,8 +8,6 @@ use crate::{
     utils::constant::{TICKET_STATE_CLOSED, TICKET_STATE_OPEN},
 };
 
-use super::employee;
-
 #[derive(Debug, Clone, Identifiable, Selectable, Queryable)]
 #[diesel(table_name = assist_info)]
 pub struct Assist {

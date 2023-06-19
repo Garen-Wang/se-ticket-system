@@ -1,7 +1,5 @@
-use std::collections::BTreeMap;
-
 use actix_web::{web, HttpRequest, HttpResponse};
-use chrono::{Datelike, Weekday};
+use chrono::Datelike;
 
 use crate::{
     api::{
@@ -13,19 +11,6 @@ use crate::{
     AppState,
 };
 
-fn weekday_to_string(weekday: Weekday) -> &'static str {
-    match weekday as i32 {
-        0 => "Monday",
-        1 => "Tuesday",
-        2 => "Wednesday",
-        3 => "Thursday",
-        4 => "Friday",
-        5 => "Saturday",
-        6 => "Sunday",
-        _ => "???",
-    }
-}
-
 pub async fn get_pie_chart_data(
     _app_state: web::Data<AppState>,
     _req: HttpRequest,
@@ -33,9 +18,7 @@ pub async fn get_pie_chart_data(
 ) -> Result<HttpResponse, AppError> {
     // let mut conn = app_state.conn()?;
     // let system = get_current_system(&req, &mut conn)?;
-    let a = 100;
-    let b = 200;
-    let c = 300;
+    // TODO:
     match form.t.as_str() {
         "daily" => {
             // get_daily_closed_ticket_count()
@@ -72,6 +55,7 @@ pub async fn get_bar_chart_data(
     // let system = get_current_system(&req, &mut conn)?;
     let a = 100;
     let b = 200;
+    // TODO:
     match form.t.as_str() {
         "daily" => {
             // get_daily_closed_ticket_count()
@@ -92,7 +76,7 @@ pub async fn get_bar_chart_data(
                         weekday: weekday as i32,
                         period: Some(times[i].into()),
                         open: a + (i as i32) * 100,
-                        closed: b - (i as i32) * 100,
+                        closed: b + (i as i32) * 100,
                     })
                 }
                 m

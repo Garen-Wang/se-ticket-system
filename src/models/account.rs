@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::{new_ok_error, AppError, ErrMessage},
+    error::{new_ok_error, AppError},
     schema::account_info,
     utils,
 };

@@ -31,14 +31,6 @@ pub struct SpecialLevelItem {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct ApprovalRequest {
-    pub approval_level: i32,
-    pub approval_name: String,
-    pub company_name: Option<String>,
-    pub amount: i32,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct RegisterRequest {
     pub account: String,
     pub password: String,

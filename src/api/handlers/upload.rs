@@ -4,13 +4,20 @@ use actix_multipart::Multipart;
 use actix_web::{web, HttpResponse};
 use futures::{StreamExt, TryStreamExt};
 
-use crate::{error::AppError, utils::response::new_ok_response};
+use crate::{
+    api::{request::upload::UploadFileV2Request, response::upload::UploadFileV2Response},
+    error::{new_ok_error, AppError},
+    utils::{constant::IMAGE_URL_PREFIX, response::CommonResponse},
+};
 
 pub async fn save_file(mut payload: Multipart) -> Result<HttpResponse, AppError> {
     if let Ok(Some(mut field)) = payload.try_next().await {
         let content_type = field.content_disposition();
         let filename = content_type.get_filename().unwrap();
         let file_path = format!("static/{}", filename);
+        let resp = UploadFileV2Response {
+            url: format!("{}/{}", IMAGE_URL_PREFIX, file_path),
+        };
 
         // File::create is blocking operation, use threadpool
         let mut f = web::block(|| std::fs::File::create(file_path))
@@ -27,6 +34,27 @@ pub async fn save_file(mut payload: Multipart) -> Result<HttpResponse, AppError>
                 .unwrap()
                 .unwrap();
         }
+        Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
+    } else {
+        Err(new_ok_error("上传图片失败"))
     }
-    Ok(HttpResponse::Ok().json(new_ok_response("上传成功")))
+}
+
+pub async fn save_file_v2(form: web::Json<UploadFileV2Request>) -> Result<HttpResponse, AppError> {
+    let file_path = format!("static/{}", form.name);
+    let content = base64::decode(&form.file).unwrap();
+
+    let mut f = web::block(|| std::fs::File::create(file_path))
+        .await
+        .unwrap()
+        .unwrap();
+
+    web::block(move || f.write_all(&content).map(|_| f))
+        .await
+        .unwrap()
+        .unwrap();
+    let resp = UploadFileV2Response {
+        url: format!("{}/static/{}", IMAGE_URL_PREFIX, form.name),
+    };
+    Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
 }

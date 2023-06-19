@@ -19,4 +19,8 @@ pub const APPROVAL_ID_ADMIN: i32 = 0; // 特殊的 approval id，看到就是管
 pub const SEX_FEMALE: i16 = 0;
 pub const SEX_MALE: i16 = 1;
 
+pub const APPROVE_RESULT_APPROVED: i16 = 1;
+pub const APPROVE_RESULT_REJECTED: i16 = 0;
+
 pub const TEST_IMAGE_PATH: &str = "http://8.134.67.143:7878/static/image1.jpeg";
+pub const IMAGE_URL_PREFIX: &str = "http://8.134.67.143:7878";

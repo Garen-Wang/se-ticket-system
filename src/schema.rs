@@ -37,6 +37,9 @@ diesel::table! {
         ticket_id -> Int4,
         approval_id -> Int4,
         id -> Int4,
+        employee_id -> Int4,
+        created_time -> Timestamp,
+        result -> Int2,
     }
 }
 
@@ -83,6 +86,8 @@ diesel::table! {
         approval_id -> Nullable<Int4>,
         system_id -> Int4,
         sex -> Int2,
+        #[max_length = 100]
+        company_name -> Nullable<Varchar>,
     }
 }
 
@@ -139,7 +144,6 @@ diesel::table! {
         address -> Varchar,
         created_time -> Timestamp,
         updated_time -> Timestamp,
-        expired_type -> Int2,
         system_id -> Int4,
         receiver_id -> Nullable<Int4>,
     }
@@ -150,6 +154,7 @@ diesel::joinable!(apply_dev_info -> operation_info (department_id));
 diesel::joinable!(apply_dev_info -> ticket_info (ticket_id));
 diesel::joinable!(approval_info -> system_info (system_id));
 diesel::joinable!(approved_info -> approval_info (approval_id));
+diesel::joinable!(approved_info -> employee_info (employee_id));
 diesel::joinable!(approved_info -> ticket_info (ticket_id));
 diesel::joinable!(assist_department_info -> assist_info (assist_id));
 diesel::joinable!(assist_department_info -> operation_info (department_id));
