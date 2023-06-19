@@ -51,5 +51,9 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
             .route("bar", web::get().to(figure::get_bar_chart_data)),
     );
 
-    cfg.route("/upload", web::post().to(upload::save_file));
+    cfg.service(
+        web::scope("/upload")
+            .route("/v2", web::post().to(upload::save_file_v2))
+            .route("", web::post().to(upload::save_file)),
+    );
 }
