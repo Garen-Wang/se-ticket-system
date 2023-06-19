@@ -143,9 +143,11 @@ diesel::table! {
         #[max_length = 500]
         address -> Varchar,
         created_time -> Timestamp,
-        updated_time -> Timestamp,
+        approved_time -> Nullable<Timestamp>,
         system_id -> Int4,
         receiver_id -> Nullable<Int4>,
+        received_time -> Nullable<Timestamp>,
+        finished_time -> Nullable<Timestamp>,
     }
 }
 

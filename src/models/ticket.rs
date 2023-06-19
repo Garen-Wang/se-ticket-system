@@ -34,9 +34,11 @@ pub struct Ticket {
     pub image: Option<String>,
     pub address: String,
     pub created_time: NaiveDateTime,
-    pub updated_time: NaiveDateTime,
+    pub approved_time: Option<NaiveDateTime>,
     pub system_id: i32,
     pub receiver_id: Option<i32>,
+    pub received_time: Option<NaiveDateTime>,
+    pub finished_time: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable)]
@@ -50,7 +52,6 @@ pub struct InsertTicket<'a> {
     pub address: &'a str,
     pub system_id: i32,
     pub created_time: NaiveDateTime,
-    pub updated_time: NaiveDateTime,
 }
 
 #[derive(AsChangeset)]
@@ -61,6 +62,9 @@ pub struct UpdateTicket {
     pub state: Option<i16>,
     pub approval_id: Option<Option<i32>>,
     pub receiver_id: Option<i32>,
+    pub approved_time: Option<NaiveDateTime>,
+    pub received_time: Option<NaiveDateTime>,
+    pub finished_time: Option<NaiveDateTime>,
 }
 
 // static methods
@@ -291,6 +295,9 @@ impl Ticket {
                 state: None,
                 approval_id: None,
                 receiver_id: Some(receiver_id),
+                approved_time: None,
+                received_time: Some(chrono::Utc::now().naive_local()),
+                finished_time: None,
             })
             .get_result(conn)?;
         Ok(updated_ticket)
@@ -329,6 +336,22 @@ impl Ticket {
         Ok(tickets)
     }
 
+    pub fn set_state_open(conn: &mut PgConnection, ticket_id: i32) -> Result<Ticket, AppError> {
+        let ticket = diesel::update(ticket_info::table.find(ticket_id))
+            .set(UpdateTicket {
+                last_approver_id: None,
+                amount: None,
+                state: Some(TICKET_STATE_OPEN),
+                approval_id: None,
+                receiver_id: None,
+                approved_time: None,
+                received_time: None,
+                finished_time: None,
+            })
+            .get_result(conn)?;
+        Ok(ticket)
+    }
+
     pub fn update_state(
         conn: &mut PgConnection,
         ticket_id: i32,
@@ -342,6 +365,9 @@ impl Ticket {
                 state: Some(new_state),
                 approval_id: None,
                 receiver_id: None,
+                approved_time: None,
+                received_time: None,
+                finished_time: None,
             })
             .get_result(conn)?;
         Ok(ticket)
@@ -360,6 +386,9 @@ impl Ticket {
                 state: None,
                 approval_id: None,
                 receiver_id: None,
+                approved_time: None,
+                received_time: None,
+                finished_time: None,
             })
             .get_result(conn)?;
         Ok(ticket)
@@ -433,6 +462,9 @@ impl Ticket {
                 state: None,
                 approval_id: Some(approval_id),
                 receiver_id: None,
+                approved_time: Some(chrono::Utc::now().naive_local()),
+                received_time: None,
+                finished_time: None,
             })
             .get_result(conn)?;
         Ok(a)
@@ -461,6 +493,9 @@ impl Ticket {
                     state: None,
                     approval_id: None,
                     receiver_id: None,
+                    approved_time: Some(chrono::Utc::now().naive_local()),
+                    received_time: None,
+                    finished_time: None,
                 })
                 .execute(conn)?;
             Ok(false)
@@ -475,6 +510,9 @@ impl Ticket {
                     state: None,
                     approval_id: Some(new_approval.map(|x| x.id)),
                     receiver_id: None,
+                    approved_time: Some(chrono::Utc::now().naive_local()),
+                    received_time: None,
+                    finished_time: None,
                 })
                 .execute(conn)?;
             Ok(ret)

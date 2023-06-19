@@ -45,6 +45,7 @@ pub async fn approve_ticket(
         )? {
             // 如果能找到下一个审批的人，就还是审批状态
             // 如果没有，就通过
+            Ticket::set_state_open(&mut conn, form.ticket_id)?;
             Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_OPEN)?;
         }
         Ok(HttpResponse::Ok().json(new_ok_response("已通过")))

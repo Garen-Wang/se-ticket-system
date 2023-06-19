@@ -11,7 +11,7 @@ use crate::{
         },
         response::ticket::{
             AvailableTicketsResponse, CurrentTicketResponse, HistoryTicketsResponse,
-            MGetOverviewByPageResponse, PCTicketResponse, TicketOverviewResponse,
+            MGetOverviewByPageResponse, PCTicketResponse,
         },
     },
     error::{new_ok_error, AppError},
@@ -125,7 +125,6 @@ pub async fn create_ticket(
         image: form.image.as_ref().map(|x| x.as_str()),
         system_id: system.id,
         created_time: Utc::now().naive_utc(),
-        updated_time: Utc::now().naive_utc(),
     };
     let ticket = Ticket::create(&mut conn, insert_ticket)?;
     let mut funds = vec![];
