@@ -53,6 +53,15 @@ pub struct TicketOverviewResponse {
 
 impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
     fn from((ticket, employee, funds): (Ticket, Employee, Vec<Fund>)) -> Self {
+        let delta = chrono::Utc::now().naive_local() - ticket.created_time;
+        let hours = delta.num_hours();
+        let remaining = if hours <= 48 {
+            None
+        } else if hours <= 72 {
+            Some(format!("{}小时", 72 - hours))
+        } else {
+            Some(format!("已超时{}小时", hours - 72))
+        };
         Self {
             tid: ticket.id,
             title: ticket.title,
@@ -64,7 +73,7 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
             address: ticket.address,
             state: ticket.state,
             funds,
-            remaining: Some("1".to_owned()),
+            remaining,
         }
     }
 }

@@ -93,7 +93,7 @@ impl Ticket {
         Ok(ticket)
     }
 
-    // TODO: 有问题，包含了历史审批
+    // Deprecated: 有问题，包含了历史审批
     pub fn get_count(conn: &mut PgConnection, system_id: i32) -> Result<i64, AppError> {
         let target = FilterDsl::filter(ticket_info::table, ticket_info::system_id.eq(system_id))
             .count()
@@ -118,7 +118,7 @@ impl Ticket {
         Ok(target)
     }
 
-    // TODO: 有问题，包含了历史审批
+    // Deprecated: 有问题，包含了历史审批
     pub fn mget_by_page(
         conn: &mut PgConnection,
         system_id: i32,
@@ -668,7 +668,6 @@ impl Ticket {
 
 impl Ticket {
     pub fn get_state_at_moment(&self, timestamp: NaiveDateTime) -> Result<Option<i16>, AppError> {
-        // TODO: 首先要判断是否已经被拒了
         if let Some(rejected_time) = self.rejected_time {
             if timestamp >= rejected_time {
                 return Ok(Some(TICKET_STATE_REJECTED));
