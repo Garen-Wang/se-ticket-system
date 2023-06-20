@@ -58,10 +58,8 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
         let hours = delta.num_hours();
         let remaining = if hours <= 48 {
             None
-        } else if hours <= 72 {
-            Some(format!("还剩{}小时", 72 - hours))
         } else {
-            Some(format!("已超时{}小时", hours - 72))
+            Some((hours - 72).to_string())
         };
         Self {
             tid: ticket.id,
