@@ -242,7 +242,7 @@ impl Ticket {
         page: i32,
     ) -> Result<Vec<Self>, AppError> {
         let now = chrono::Utc::now().naive_local();
-        let expired_datetime = now - Duration::days(3);
+        let expired_datetime = now - Duration::days(2);
         let tickets = FilterDsl::filter(
             ticket_info::table,
             ticket_info::system_id
