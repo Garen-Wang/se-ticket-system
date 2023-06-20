@@ -4,6 +4,7 @@ use serde::Serialize;
 use crate::{
     error::AppError,
     models::{
+        approval::ApprovalWithTicket,
         assist::Assist,
         employee::Employee,
         ticket::{Fund, Ticket, TicketWithDepartments},
@@ -58,7 +59,7 @@ impl From<(Ticket, Employee, Vec<Fund>)> for TicketOverviewResponse {
         let remaining = if hours <= 48 {
             None
         } else if hours <= 72 {
-            Some(format!("{}小时", 72 - hours))
+            Some(format!("还剩{}小时", 72 - hours))
         } else {
             Some(format!("已超时{}小时", hours - 72))
         };
@@ -226,7 +227,7 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 phone_number_ass: None,
                 image_path: t.image,
                 participants: Ticket::mget_participant(conn, t.id, false).unwrap(),
-                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()], // TODO:
+                approval_info: ApprovalWithTicket::get_approver_list(conn, t.id).unwrap(),
             });
         }
         for (t, ass) in ass_main_tickets.into_iter().zip(ass_tickets.into_iter()) {
@@ -247,7 +248,7 @@ impl From<(&mut AppConn, Vec<Ticket>, Vec<Ticket>, Vec<Assist>)> for HistoryTick
                 phone_number_ass: Some(submitter.phone.trim().to_string()),
                 image_path: t.image,
                 participants: Ticket::mget_participant(conn, t.id, true).unwrap(),
-                approval_info: vec!["黄姥爷".into(), "黄姥爷".into(), "黄姥爷".into()], // TODO:
+                approval_info: ApprovalWithTicket::get_approver_list(conn, t.id).unwrap(),
             });
         }
         Self { tickets: ret }

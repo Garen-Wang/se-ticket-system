@@ -7,6 +7,8 @@ use crate::{
     schema::{approval_info, approved_info},
 };
 
+use super::employee::Employee;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Selectable, Identifiable, Queryable)]
 #[diesel(table_name = approval_info)]
 pub struct Approval {
@@ -158,5 +160,22 @@ impl ApprovalWithTicket {
             })
             .get_result(conn)?;
         Ok(a)
+    }
+
+    pub fn get_approver_list(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+    ) -> Result<Vec<String>, AppError> {
+        let ids: Vec<i32> =
+            FilterDsl::filter(approved_info::table, approved_info::ticket_id.eq(ticket_id))
+                .select(approved_info::employee_id)
+                .order(approved_info::created_time.asc())
+                .get_results(conn)?;
+        let mut ret = vec![];
+        for id in ids.into_iter() {
+            let employee = Employee::get_by_id(conn, id)?;
+            ret.push(employee.name);
+        }
+        Ok(ret)
     }
 }
