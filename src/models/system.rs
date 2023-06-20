@@ -8,6 +8,7 @@ pub struct System {
     pub id: i32,
     pub name: String,
     pub admin_account_id: Option<i32>,
+    pub initialized: i16, // 1: initialized, 0: uninitialized
 }
 
 #[derive(Insertable)]
@@ -36,6 +37,17 @@ impl System {
     ) -> Result<System, AppError> {
         let system: System = diesel::update(system_info::table.filter(system_info::id.eq(id)))
             .set(system_info::admin_account_id.eq(account_id))
+            .get_result(conn)?;
+        Ok(system)
+    }
+
+    pub fn set_initialized(
+        conn: &mut PgConnection,
+        id: i32,
+        initialized: i16,
+    ) -> Result<System, AppError> {
+        let system = diesel::update(system_info::table.find(id))
+            .set(system_info::initialized.eq(initialized))
             .get_result(conn)?;
         Ok(system)
     }

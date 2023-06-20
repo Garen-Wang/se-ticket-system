@@ -1,5 +1,4 @@
 use actix_web::{web, HttpRequest, HttpResponse};
-use passwords::PasswordGenerator;
 
 use crate::{
     api::{
@@ -15,55 +14,24 @@ use crate::{
         system::System,
     },
     utils::{
-        auth::{get_current_system, is_super_admin, is_system_admin},
-        constant::{ACCOUNT_TYPE_ADMIN, SEX_FEMALE, SEX_MALE},
+        auth::{get_current_system, is_system_admin},
+        constant::{SEX_FEMALE, SEX_MALE},
         response::CommonResponse,
     },
     AppState,
 };
 
-pub async fn create_system(
+pub async fn initialize_system(
     app_state: web::Data<AppState>,
     req: HttpRequest,
     form: web::Json<CreateSystemRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
-    if is_super_admin(&req, &mut conn)? {
+    if is_system_admin(&req, &mut conn)? {
+        let system = get_current_system(&req, &mut conn)?;
         if form.levels.len() <= 0 {
             return Err(new_ok_error("至少要有一个审批层级"));
         }
-        let system = System::create(&mut conn, &form.name)?;
-        let employee = Employee::create(
-            &mut conn,
-            InsertEmployee {
-                name: &format!("系统管理员_{}", system.id),
-                age: 0,
-                position: Some("管理员"),
-                phone: "11111111111",
-                approval_id: None,
-                system_id: system.id,
-                sex: SEX_MALE,
-                company_name: None,
-            },
-        )?;
-        let pg = PasswordGenerator {
-            length: 8,
-            numbers: true,
-            lowercase_letters: true,
-            uppercase_letters: true,
-            exclude_similar_characters: true,
-            symbols: true,
-            spaces: false,
-            strict: true,
-        };
-        let (account, _) = Account::register(
-            &mut conn,
-            employee.id,
-            &format!("admin_{}", system.id),
-            &pg.generate_one().unwrap(),
-            ACCOUNT_TYPE_ADMIN,
-        )?;
-        let system = System::set_admin_account_id(&mut conn, system.id, account.id)?;
         let mut departments = vec![];
         for dep_item in form.departments.iter() {
             let department = Department::create(
@@ -99,6 +67,7 @@ pub async fn create_system(
                 )?;
             }
         }
+        System::set_initialized(&mut conn, system.id, 1)?;
         let resp = CreateSystemResponse::from((system, departments));
         Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else {
@@ -115,11 +84,11 @@ pub async fn create_employee(
     form: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
-    let system = get_current_system(&req, &mut conn)?;
     let app_error = new_ok_error("没有权限创建新帐号");
-    if !is_super_admin(&req, &mut conn)? && !is_system_admin(&req, &mut conn)? {
+    if !is_system_admin(&req, &mut conn)? {
         return Err(app_error);
     }
+    let system = get_current_system(&req, &mut conn)?;
     let approval_id = if form.approval_name.len() > 0 {
         Approval::get_by_name(&mut conn, system.id, &form.approval_name)?.map(|x| x.id)
     } else {

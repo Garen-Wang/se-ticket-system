@@ -1,8 +1,5 @@
 use crate::{
-    api::response::figure::{
-        BarChartState, GetBarChartDataResponse, GetPieChartDataResponse, GetTableResponse,
-        TableState,
-    },
+    api::response::figure::{BarChartState, GetPieChartDataResponse, GetTableResponse, TableState},
     error::new_ok_error,
     models::department::Department,
     schema::apply_dev_info,
@@ -11,7 +8,7 @@ use crate::{
         TICKET_STATE_REJECTED, TICKET_STATE_UNAPPROVED,
     },
 };
-use chrono::{Datelike, Duration, NaiveDateTime};
+use chrono::{Duration, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::query_dsl::methods::FilterDsl;
 use serde::{Deserialize, Serialize};

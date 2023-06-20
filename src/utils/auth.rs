@@ -164,19 +164,6 @@ pub fn get_current_system(req: &HttpRequest, conn: &mut PgConnection) -> Result<
     Ok(system)
 }
 
-pub fn is_super_admin(req: &HttpRequest, conn: &mut PgConnection) -> Result<bool, AppError> {
-    let user = get_current_user(req)?;
-    let employee = Employee::get_by_id(conn, user.employee_id)?;
-    if employee.id != 1 || employee.name != "超级管理员" {
-        return Ok(false);
-    }
-    let system = System::get_by_id(conn, employee.system_id)?;
-    if system.id != 1 || system.name != "超级系统" {
-        return Ok(false);
-    }
-    Ok(true)
-}
-
 pub fn is_system_admin(req: &HttpRequest, conn: &mut PgConnection) -> Result<bool, AppError> {
     let user = get_current_user(req)?;
     let system = get_current_system(req, conn)?;

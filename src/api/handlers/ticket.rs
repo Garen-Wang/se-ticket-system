@@ -22,7 +22,7 @@ use crate::{
         ticket::{Fund, InsertFund, InsertTicket, Ticket, TicketWithDepartments},
     },
     utils::{
-        auth::{get_current_employee, get_current_system, is_super_admin},
+        auth::{get_current_employee, get_current_system},
         constant::{
             EMPLOYEE_STATUS_AVAILABLE, EMPLOYEE_STATUS_UNAVAILABLE, TICKET_STATE_ASSIGNED,
             TICKET_STATE_CLOSED, TICKET_STATE_OPEN,
@@ -109,9 +109,6 @@ pub async fn create_ticket(
     form: web::Json<CreateTicketRequest>,
 ) -> Result<HttpResponse, AppError> {
     let mut conn = app_state.conn()?;
-    if is_super_admin(&req, &mut conn)? {
-        return Err(new_ok_error("超级管理员不能创建工单"));
-    }
 
     let employee = get_current_employee(&req, &mut conn)?;
     let system = get_current_system(&req, &mut conn)?;

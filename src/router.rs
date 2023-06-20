@@ -17,7 +17,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 
     cfg.service(
         web::scope("/system")
-            .route("", web::post().to(system::create_system))
+            .route("", web::post().to(system::initialize_system))
             .route("employee", web::post().to(system::create_employee)),
     );
 

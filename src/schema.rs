@@ -123,6 +123,7 @@ diesel::table! {
         #[max_length = 50]
         name -> Varchar,
         admin_account_id -> Nullable<Int4>,
+        initialized -> Int2,
     }
 }
 
@@ -169,6 +170,7 @@ diesel::joinable!(employee_operation_info -> employee_info (employee_id));
 diesel::joinable!(employee_operation_info -> operation_info (department_id));
 diesel::joinable!(fund_list -> ticket_info (ticket_id));
 diesel::joinable!(operation_info -> system_info (system_id));
+diesel::joinable!(system_info -> account_info (admin_account_id));
 diesel::joinable!(ticket_info -> approval_info (approval_id));
 diesel::joinable!(ticket_info -> system_info (system_id));
 

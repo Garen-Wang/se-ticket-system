@@ -8,11 +8,11 @@ pub struct AccountResponse {
     pub username: String,
     pub account_type: i16,
     pub token: Option<String>,
-    pub system_name: String,
+    pub system_name: Option<String>,
 }
 
-impl From<(Account, String, String)> for AccountResponse {
-    fn from((user, token, system_name): (Account, String, String)) -> Self {
+impl From<(Account, String, Option<String>)> for AccountResponse {
+    fn from((user, token, system_name): (Account, String, Option<String>)) -> Self {
         Self {
             id: user.id,
             username: user.account_name,
@@ -21,4 +21,10 @@ impl From<(Account, String, String)> for AccountResponse {
             system_name,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RegisterAdminResponse {
+    pub system_id: i32,
+    pub token: String,
 }
