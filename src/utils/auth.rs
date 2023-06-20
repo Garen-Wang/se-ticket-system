@@ -31,6 +31,10 @@ lazy_static! {
             method: Method::POST,
         },
         SkipAuthRoute {
+            path: "/auth/admin",
+            method: Method::POST,
+        },
+        SkipAuthRoute {
             path: "/static",
             method: Method::GET,
         }
