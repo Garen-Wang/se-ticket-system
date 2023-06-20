@@ -12,6 +12,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/auth")
             .route("login", web::post().to(auth::login))
+            .route("admin", web::post().to(auth::register_admin))
             .route("", web::get().to(auth::get_myself)),
     );
 
