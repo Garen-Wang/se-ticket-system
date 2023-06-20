@@ -149,7 +149,7 @@ pub async fn create_ticket(
         employee.company_name,
         employee.id,
     )? {
-        Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_OPEN)?;
+        Ticket::open(&mut conn, ticket.id)?;
     }
     let resp = CurrentTicketResponse::from((&mut conn, ticket));
     Ok(HttpResponse::Ok().json(resp))
@@ -290,7 +290,6 @@ pub async fn take_ticket(
             let ticket = Ticket::get_by_id(&mut conn, form.tid)?;
             if ticket.state == TICKET_STATE_OPEN {
                 Ticket::set_receiver(&mut conn, form.tid, employee.id)?;
-                Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_ASSIGNED)?;
                 Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_UNAVAILABLE)?;
                 Ok(HttpResponse::Ok().json(resp))
             } else {
@@ -312,7 +311,7 @@ pub async fn finish_ticket(
     if ticket.state == TICKET_STATE_CLOSED {
         Err(new_ok_error("工单已经完成"))
     } else {
-        Ticket::update_state(&mut conn, ticket.id, TICKET_STATE_CLOSED)?;
+        Ticket::close(&mut conn, ticket.id)?;
         Employee::update_state(&mut conn, employee.id, EMPLOYEE_STATUS_AVAILABLE)?;
         let resp = new_ok_response("完成工单");
         Ok(HttpResponse::Ok().json(resp))

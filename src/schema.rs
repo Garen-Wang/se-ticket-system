@@ -149,6 +149,7 @@ diesel::table! {
         receiver_id -> Nullable<Int4>,
         received_time -> Nullable<Timestamp>,
         finished_time -> Nullable<Timestamp>,
+        rejected_time -> Nullable<Timestamp>,
     }
 }
 

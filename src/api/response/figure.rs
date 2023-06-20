@@ -7,6 +7,7 @@ pub struct GetPieChartDataResponse {
     pub available: i32,
     pub received: i32,
     pub closed: i32,
+    pub rejected: i32,
 }
 
 // #[derive(Debug, Clone, Serialize)]

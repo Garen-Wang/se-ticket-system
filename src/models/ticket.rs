@@ -39,6 +39,7 @@ pub struct Ticket {
     pub receiver_id: Option<i32>,
     pub received_time: Option<NaiveDateTime>,
     pub finished_time: Option<NaiveDateTime>,
+    pub rejected_time: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable)]
@@ -65,6 +66,7 @@ pub struct UpdateTicket {
     pub approved_time: Option<NaiveDateTime>,
     pub received_time: Option<NaiveDateTime>,
     pub finished_time: Option<NaiveDateTime>,
+    pub rejected_time: Option<NaiveDateTime>,
 }
 
 // static methods
@@ -292,12 +294,13 @@ impl Ticket {
             .set(UpdateTicket {
                 last_approver_id: None,
                 amount: None,
-                state: None,
+                state: Some(TICKET_STATE_ASSIGNED),
                 approval_id: None,
                 receiver_id: Some(receiver_id),
                 approved_time: None,
                 received_time: Some(chrono::Utc::now().naive_local()),
                 finished_time: None,
+                rejected_time: None,
             })
             .get_result(conn)?;
         Ok(updated_ticket)
@@ -336,8 +339,9 @@ impl Ticket {
         Ok(tickets)
     }
 
-    pub fn set_state_open(conn: &mut PgConnection, ticket_id: i32) -> Result<Ticket, AppError> {
+    pub fn open(conn: &mut PgConnection, ticket_id: i32) -> Result<Ticket, AppError> {
         let ticket = diesel::update(ticket_info::table.find(ticket_id))
+            // .set(ticket_info::state.eq(new_state))
             .set(UpdateTicket {
                 last_approver_id: None,
                 amount: None,
@@ -347,27 +351,41 @@ impl Ticket {
                 approved_time: None,
                 received_time: None,
                 finished_time: None,
+                rejected_time: None,
             })
             .get_result(conn)?;
         Ok(ticket)
     }
 
-    pub fn update_state(
-        conn: &mut PgConnection,
-        ticket_id: i32,
-        new_state: i16,
-    ) -> Result<Ticket, AppError> {
+    pub fn reject(conn: &mut PgConnection, ticket_id: i32) -> Result<Ticket, AppError> {
         let ticket = diesel::update(ticket_info::table.find(ticket_id))
-            // .set(ticket_info::state.eq(new_state))
             .set(UpdateTicket {
                 last_approver_id: None,
                 amount: None,
-                state: Some(new_state),
+                state: Some(TICKET_STATE_REJECTED),
                 approval_id: None,
                 receiver_id: None,
                 approved_time: None,
                 received_time: None,
                 finished_time: None,
+                rejected_time: Some(chrono::Utc::now().naive_local()),
+            })
+            .get_result(conn)?;
+        Ok(ticket)
+    }
+
+    pub fn close(conn: &mut PgConnection, ticket_id: i32) -> Result<Ticket, AppError> {
+        let ticket = diesel::update(ticket_info::table.find(ticket_id))
+            .set(UpdateTicket {
+                last_approver_id: None,
+                amount: None,
+                state: Some(TICKET_STATE_CLOSED),
+                approval_id: None,
+                receiver_id: None,
+                approved_time: None,
+                received_time: None,
+                finished_time: Some(chrono::Utc::now().naive_local()),
+                rejected_time: None,
             })
             .get_result(conn)?;
         Ok(ticket)
@@ -389,6 +407,7 @@ impl Ticket {
                 approved_time: None,
                 received_time: None,
                 finished_time: None,
+                rejected_time: None,
             })
             .get_result(conn)?;
         Ok(ticket)
@@ -465,6 +484,7 @@ impl Ticket {
                 approved_time: Some(chrono::Utc::now().naive_local()),
                 received_time: None,
                 finished_time: None,
+                rejected_time: None,
             })
             .get_result(conn)?;
         Ok(a)
@@ -496,6 +516,7 @@ impl Ticket {
                     approved_time: Some(chrono::Utc::now().naive_local()),
                     received_time: None,
                     finished_time: None,
+                    rejected_time: None,
                 })
                 .execute(conn)?;
             Ok(false)
@@ -513,6 +534,7 @@ impl Ticket {
                     approved_time: Some(chrono::Utc::now().naive_local()),
                     received_time: None,
                     finished_time: None,
+                    rejected_time: None,
                 })
                 .execute(conn)?;
             Ok(ret)
@@ -529,6 +551,7 @@ impl Ticket {
         let mut available = 0;
         let mut received = 0;
         let mut closed = 0;
+        let mut rejected = 0;
 
         let tickets: Vec<Ticket> =
             FilterDsl::filter(ticket_info::table, ticket_info::system_id.eq(system_id))
@@ -552,7 +575,7 @@ impl Ticket {
                     closed += 1;
                 }
                 Some(TICKET_STATE_REJECTED) => {
-                    log::warn!("rejected");
+                    rejected += 1;
                 }
                 _ => {}
             }
@@ -563,6 +586,7 @@ impl Ticket {
             available,
             received,
             closed,
+            rejected,
         })
     }
 
@@ -645,6 +669,11 @@ impl Ticket {
 impl Ticket {
     pub fn get_state_at_moment(&self, timestamp: NaiveDateTime) -> Result<Option<i16>, AppError> {
         // TODO: 首先要判断是否已经被拒了
+        if let Some(rejected_time) = self.rejected_time {
+            if timestamp >= rejected_time {
+                return Ok(Some(TICKET_STATE_REJECTED));
+            }
+        }
         if timestamp < self.created_time {
             Ok(None)
         } else if self.approved_time.is_none() {

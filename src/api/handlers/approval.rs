@@ -45,8 +45,7 @@ pub async fn approve_ticket(
         )? {
             // 如果能找到下一个审批的人，就还是审批状态
             // 如果没有，就通过
-            Ticket::set_state_open(&mut conn, form.ticket_id)?;
-            Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_OPEN)?;
+            Ticket::open(&mut conn, form.ticket_id)?;
         }
         Ok(HttpResponse::Ok().json(new_ok_response("已通过")))
     } else {
@@ -70,7 +69,7 @@ pub async fn reject_ticket(
             employee.id,
             APPROVE_RESULT_REJECTED,
         )?;
-        Ticket::update_state(&mut conn, form.ticket_id, TICKET_STATE_REJECTED)?;
+        Ticket::reject(&mut conn, form.ticket_id)?;
         Ok(HttpResponse::Ok().json(new_ok_response("已驳回")))
     } else {
         Err(new_ok_error("你不是审批人"))

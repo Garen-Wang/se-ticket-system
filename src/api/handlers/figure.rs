@@ -25,7 +25,6 @@ pub async fn get_pie_chart_data(
 
     let t = NaiveDateTime::parse_from_str(&format!("{} 23:59:59", form.date), "%Y-%m-%d %H:%M:%S");
     if t.is_err() {
-        // TODO: 日期兜底
         return Err(new_ok_error("日期不合法"));
     }
     let t = t.unwrap();
@@ -59,11 +58,6 @@ pub async fn get_bar_chart_data(
     let system = get_current_system(&req, &mut conn)?;
 
     let date = form.date.clone();
-    // let date = if form.date.len() > 0 {
-    //     form.date
-    // } else {
-    //     "haha".to_owned() // TODO: d d
-    // };
 
     let _start_times = vec![
         "0:00:00", "4:00:00", "8:00:00", "12:00:00", "16:00:00", "20:00:00",
@@ -123,7 +117,6 @@ pub async fn get_bar_chart_data(
     }
 }
 
-// TODO: 表格
 pub async fn get_table(
     app_state: web::Data<AppState>,
     req: HttpRequest,
