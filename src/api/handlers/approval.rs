@@ -89,7 +89,10 @@ pub async fn get_approval_levels_by_company(
     } else {
         None
     };
-    let approvals = Approval::mget_by_company(&mut conn, system.id, company_name)?;
+    let mut approvals = Approval::mget_by_company(&mut conn, system.id, company_name)?;
+    if approvals.len() == 0 {
+        approvals = Approval::mget_by_company(&mut conn, system.id, None)?;
+    }
     let resp = MGetApprovalLevelByCompanyResponse {
         approval_names: approvals.into_iter().map(|x| x.approval_name).collect(),
     };
