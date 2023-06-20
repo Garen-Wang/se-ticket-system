@@ -51,4 +51,11 @@ impl System {
             .get_result(conn)?;
         Ok(system)
     }
+
+    pub fn set_name(conn: &mut PgConnection, id: i32, name: String) -> Result<System, AppError> {
+        let system = diesel::update(system_info::table.find(id))
+            .set(system_info::name.eq(name))
+            .get_result(conn)?;
+        Ok(system)
+    }
 }

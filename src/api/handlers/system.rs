@@ -29,9 +29,13 @@ pub async fn initialize_system(
     let mut conn = app_state.conn()?;
     if is_system_admin(&req, &mut conn)? {
         let system = get_current_system(&req, &mut conn)?;
+        if system.initialized != 0 {
+            return Err(new_ok_error("系统已经被初始化"));
+        }
         if form.levels.len() <= 0 {
             return Err(new_ok_error("至少要有一个审批层级"));
         }
+        let system = System::set_name(&mut conn, system.id, form.name.clone())?;
         let mut departments = vec![];
         for dep_item in form.departments.iter() {
             let department = Department::create(
@@ -71,7 +75,7 @@ pub async fn initialize_system(
         let resp = CreateSystemResponse::from((system, departments));
         Ok(HttpResponse::Ok().json(CommonResponse::from(resp)))
     } else {
-        Err(new_ok_error("不是超级管理员，没有权限创建系统"))
+        Err(new_ok_error("不是管理员，没有权限创建系统"))
     }
 }
 
