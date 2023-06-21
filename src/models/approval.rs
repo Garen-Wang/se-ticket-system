@@ -91,8 +91,20 @@ impl Approval {
                     .and(approval_info::company.eq(company_name)),
             )
             .get_results::<Approval>(conn)?;
-            Ok(approvals)
+            if approvals.len() == 0 {
+                let approvals = FilterDsl::filter(
+                    approval_info::table,
+                    approval_info::system_id
+                        .eq(system_id)
+                        .and(approval_info::company.is_null()),
+                )
+                .get_results::<Approval>(conn)?;
+                Ok(approvals)
+            } else {
+                Ok(approvals)
+            }
         } else {
+            log::info!("dddddd");
             let approvals = FilterDsl::filter(
                 approval_info::table,
                 approval_info::system_id
