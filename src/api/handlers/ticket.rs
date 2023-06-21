@@ -143,6 +143,7 @@ pub async fn create_ticket(
         let _ = TicketWithDepartments::create(&mut conn, ticket.id, department.id)?;
     }
     Ticket::update_amount(&mut conn, ticket.id, sum)?;
+    Ticket::init_next_current_approval_id(&mut conn, ticket.id, employee.company_name.clone())?;
     if !Ticket::update_next_current_approval_id(
         &mut conn,
         ticket.id,

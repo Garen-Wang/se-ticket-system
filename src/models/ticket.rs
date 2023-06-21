@@ -490,6 +490,32 @@ impl Ticket {
         Ok(a)
     }
 
+    pub fn init_next_current_approval_id(
+        conn: &mut PgConnection,
+        ticket_id: i32,
+        company_name: Option<String>,
+    ) -> Result<(), AppError> {
+        let mut new_approval = Approval::get_next_by_company(conn, company_name, 0)?;
+        if new_approval.is_none() {
+            new_approval = Approval::get_next_by_company(conn, None, 0)?;
+        }
+        diesel::update(ticket_info::table)
+            .filter(ticket_info::id.eq(ticket_id))
+            .set(UpdateTicket {
+                last_approver_id: None,
+                amount: None,
+                state: None,
+                approval_id: Some(new_approval.map(|x| x.id)),
+                receiver_id: None,
+                approved_time: Some(chrono::Utc::now().naive_local()),
+                received_time: None,
+                finished_time: None,
+                rejected_time: None,
+            })
+            .execute(conn)?;
+        Ok(())
+    }
+
     pub fn update_next_current_approval_id(
         conn: &mut PgConnection,
         ticket_id: i32,
